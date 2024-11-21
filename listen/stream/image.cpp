@@ -28,56 +28,24 @@ bool download_image(const char* url, const char* filename);
 size_t write_data(void* ptr, size_t size, size_t nmemb, FILE* stream);
 size_t write_memory_callback(void *contents, size_t size, size_t nmemb, void *userp);
 
+// Initialize SDL objects to NULL
+SDL_Window* window = NULL;
+SDL_Renderer* renderer = NULL;
+SDL_Surface* image = NULL;
+SDL_Texture* texture = NULL;
+
 bool create_window() {
-
-    return true;
-}
-
-bool create_image(const char* prompt) {
-    char image_id[128];
-    char image_url[512];
-
-    // Generate the image and get the ID
-    if (!generate_image(prompt, image_id)) {
-        fprintf(stderr, "Failed to generate image\n");
-        return 1;
-    }
-    printf("Generated image ID: %s\n", image_id);
-
-    while (true) {
-        sleep(1);
-
-        // Get the URL of the generated image
-        if (!get_image_url(image_id, image_url)) {
-            continue;
-        }
-        break;
-    }
-
-    // Download the image
-    if (!download_image(image_url, TEMP_IMAGE_FILE)) {
-        fprintf(stderr, "Failed to download image\n");
-        return 1;
-    }
-    printf("Image downloaded successfully as %s\n", TEMP_IMAGE_FILE);
-
-    // Initialize SDL objects to NULL
-    SDL_Window* window = NULL;
-    SDL_Renderer* renderer = NULL;
-    SDL_Surface* image = NULL;
-    SDL_Texture* texture = NULL;
-
     // Initialize SDL video subsystem
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
         fprintf(stderr, "SDL could not initialize: %s\n", SDL_GetError());
-        return 1;
+        return false;
     }
 
     // Initialize SDL_image for multiple image formats
     if (IMG_Init(IMG_INIT_JPG | IMG_INIT_PNG | IMG_INIT_TIF) == 0) {
         fprintf(stderr, "SDL_image could not initialize: %s\n", SDL_GetError());
         SDL_Quit();
-        return 1;
+        return false;
     }
 
     // Create SDL window
@@ -86,7 +54,7 @@ bool create_image(const char* prompt) {
         fprintf(stderr, "Window could not be created: %s\n", SDL_GetError());
         IMG_Quit();
         SDL_Quit();
-        return 1;
+        return false;
     }
 
     // Create renderer for the window
@@ -96,38 +64,13 @@ bool create_image(const char* prompt) {
         SDL_DestroyWindow(window);
         IMG_Quit();
         SDL_Quit();
-        return 1;
+        return false;
     }
 
-    // Load downloaded image
-    image = IMG_Load(TEMP_IMAGE_FILE);
-    if (!image) {
-        fprintf(stderr, "Unable to load image: %s\n", SDL_GetError());
-        SDL_DestroyRenderer(renderer);
-        SDL_DestroyWindow(window);
-        IMG_Quit();
-        SDL_Quit();
-        return 1;
-    }
-
-    // Create texture from loaded image
-    texture = SDL_CreateTextureFromSurface(renderer, image);
-    if (!texture) {
-        fprintf(stderr, "Unable to create texture: %s\n", SDL_GetError());
-        SDL_FreeSurface(image);
-        SDL_DestroyRenderer(renderer);
-        SDL_DestroyWindow(window);
-        IMG_Quit();
-        SDL_Quit();
-        return 1;
-    }
-
-    // Event handling variables
+    // Show window
     SDL_Event event;
     bool quit = false;
-
-    // Main event loop
-    while (!quit) {
+//    for (int i = 0; i < 100; i++) {
         while (SDL_PollEvent(&event) != 0) {
             if (event.type == SDL_QUIT || (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE)) {
                 quit = true;
@@ -135,18 +78,77 @@ bool create_image(const char* prompt) {
         }
 
         // Clear renderer
-        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+        SDL_SetRenderDrawColor(renderer, 200, 200, 200, 200);
         SDL_RenderClear(renderer);
-
-        // Render texture
-        SDL_RenderCopy(renderer, texture, NULL, NULL);
 
         // Present renderer
         SDL_RenderPresent(renderer);
 
         SDL_Delay(16); // Limit frame rate
+//    }
+    return true;
+}
+
+bool create_image(const char* prompt) {
+    // Generate the image
+    char image_id[128];
+    char image_url[512];
+    if (!generate_image(prompt, image_id)) {
+        fprintf(stderr, "Failed to generate image\n");
+        return false;
+    }
+    printf("\nGenerated image ID: %s\n", image_id);
+
+    // Wait until it is generated
+    while (true) {
+        // Wait
+        usleep(500000);
+
+        // Get the URL of the generated image
+        if (get_image_url(image_id, image_url)) break;
     }
 
+    // Download the image
+    if (!download_image(image_url, TEMP_IMAGE_FILE)) {
+        fprintf(stderr, "Failed to download image\n");
+        return false;
+    }
+    printf("Image downloaded: %s\n", TEMP_IMAGE_FILE);
+
+    // Load downloaded image
+    image = IMG_Load(TEMP_IMAGE_FILE);
+    if (!image) {
+        fprintf(stderr, "Unable to load image: %s\n", SDL_GetError());
+        return false;
+    }
+
+    // Create texture from loaded image
+    texture = SDL_CreateTextureFromSurface(renderer, image);
+    if (!texture) {
+        fprintf(stderr, "Unable to create texture: %s\n", SDL_GetError());
+        SDL_FreeSurface(image);
+        return false;
+    }
+
+    // Event handling variables
+    SDL_Event event;
+    bool quit = false;
+
+    // Clear renderer
+    SDL_SetRenderDrawColor(renderer, 200, 200, 200, 200);
+    SDL_RenderClear(renderer);
+
+    // Render texture
+    SDL_RenderCopy(renderer, texture, NULL, NULL);
+
+    // Present renderer
+    SDL_RenderPresent(renderer);
+    SDL_Delay(16);
+
+    return true;
+}
+
+bool close_window() {
     // Clean up
     SDL_DestroyTexture(texture);
     SDL_FreeSurface(image);
@@ -154,10 +156,8 @@ bool create_image(const char* prompt) {
     SDL_DestroyWindow(window);
     IMG_Quit();
     SDL_Quit();
-
     return 0;
 }
-
 
 // Callback function for libcurl to write data to a file
 size_t write_data(void* ptr, size_t size, size_t nmemb, FILE* stream) {
@@ -327,7 +327,4 @@ bool get_image_url(const char *image_id, char *image_url) {
     free(chunk.response);
     return true;
 }
-
-
-
 
