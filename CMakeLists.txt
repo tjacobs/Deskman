@@ -183,6 +183,4 @@ if (WHISPER_BUILD_TESTS AND NOT CMAKE_JS_VERSION)
     #add_subdirectory(tests)
 endif ()
 
-if (WHISPER_BUILD_EXAMPLES)
-    add_subdirectory(examples)
-endif()
+add_subdirectory(listen)
