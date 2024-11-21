@@ -1,7 +1,6 @@
-// Real-time speech recognition of input from a microphone
-//
-// A very quick-n-dirty implementation serving mainly as a proof of concept.
-//
+
+// Listen to speech, show images based on commands spoken.
+
 #include "common-sdl.h"
 #include "common.h"
 #include "whisper.h"
@@ -12,7 +11,6 @@
 #include <thread>
 #include <vector>
 #include <fstream>
-
 #include <stdio.h>
 #include <stdbool.h>
 #include <string.h>
@@ -22,10 +20,11 @@
 #include <SDL2/SDL_image.h>
 #include <curl/curl.h>
 
-#define TEMP_IMAGE_FILE "generated_image.jpg"
+// Generate images from Black forest labs Flux
 #define API_URL_POST "https://api.bfl.ml/v1/flux-pro-1.1"
 #define API_URL_GET "https://api.bfl.ml/v1/get_result?id=%s"
 #define API_KEY "d4f34e29-13c0-407d-bfea-86953020f5f3"
+#define TEMP_IMAGE_FILE "generated_image.jpg"
 
 // Buffer to hold the response data from CURL
 struct Memory {
@@ -33,15 +32,14 @@ struct Memory {
     size_t size;
 };
 
+bool create_image(const char* prompt);
 bool generate_image(const char *prompt, char *image_id);
 bool get_image_url(const char *image_id, char *image_url);
 bool download_image(const char* url, const char* filename);
 size_t write_data(void* ptr, size_t size, size_t nmemb, FILE* stream);
 size_t write_memory_callback(void *contents, size_t size, size_t nmemb, void *userp);
 
-int gen_image(const char* prompt);
-
-// command-line parameters
+// Command-line parameters
 struct whisper_params {
     int32_t n_threads  = std::min(4, (int32_t) std::thread::hardware_concurrency());
     int32_t step_ms    = 3000;
@@ -142,9 +140,7 @@ void whisper_print_usage(int /*argc*/, char ** argv, const whisper_params & para
 int main(int argc, char ** argv) {
     whisper_params params;
 
-    if (whisper_params_parse(argc, argv, params) == false) {
-        return 1;
-    }
+    if (whisper_params_parse(argc, argv, params) == false) return 1;
 
     params.keep_ms   = std::min(params.keep_ms,   params.step_ms);
     params.length_ms = std::max(params.length_ms, params.step_ms);
@@ -195,13 +191,6 @@ int main(int argc, char ** argv) {
     // print some info about the processing
     {
         fprintf(stderr, "\n");
-        if (!whisper_is_multilingual(ctx)) {
-            if (params.language != "en" || params.translate) {
-                params.language = "en";
-                params.translate = false;
-                fprintf(stderr, "%s: WARNING: model is not multilingual, ignoring language and translation options\n", __func__);
-            }
-        }
         fprintf(stderr, "%s: processing %d samples (step = %.1f sec / len = %.1f sec / keep = %.1f sec), %d threads, lang = %s, task = %s, timestamps = %d ...\n",
                 __func__,
                 n_samples_step,
@@ -235,37 +224,33 @@ int main(int argc, char ** argv) {
         }
     }
 
+    // Save wav file
     wav_writer wavWriter;
-    // save wav file
     if (params.save_audio) {
         // Get current date/time for filename
         time_t now = time(0);
         char buffer[80];
         strftime(buffer, sizeof(buffer), "%Y%m%d%H%M%S", localtime(&now));
         std::string filename = std::string(buffer) + ".wav";
-
         wavWriter.open(filename, WHISPER_SAMPLE_RATE, 16, 1);
     }
     printf("[Start speaking now]\n");
     fflush(stdout);
 
+    // Time
     auto t_last  = std::chrono::high_resolution_clock::now();
     const auto t_start = t_last;
 
-    // main audio loop
+    // Main loop
     while (is_running) {
-        if (params.save_audio) {
-            wavWriter.write(pcmf32_new.data(), pcmf32_new.size());
-        }
-        // handle Ctrl + C
+        // Save audio
+        if (params.save_audio) wavWriter.write(pcmf32_new.data(), pcmf32_new.size());
+
+        // Handle Ctrl + C
         is_running = sdl_poll_events();
+        if (!is_running) break;
 
-        if (!is_running) {
-            break;
-        }
-
-        // process new audio
-
+        // Process new audio, if not using Voice Activity Detection
         if (!use_vad) {
             while (true) {
                 audio.get(params.step_ms, pcmf32_new);
@@ -286,10 +271,8 @@ int main(int argc, char ** argv) {
 
             const int n_samples_new = pcmf32_new.size();
 
-            // take up to params.length_ms audio from previous iteration
+            // Take up to params.length_ms audio from previous iteration
             const int n_samples_take = std::min((int) pcmf32_old.size(), std::max(0, n_samples_keep + n_samples_len - n_samples_new));
-
-            //printf("processing: take = %d, new = %d, old = %d\n", n_samples_take, n_samples_new, (int) pcmf32_old.size());
 
             pcmf32.resize(n_samples_new + n_samples_take);
 
@@ -323,10 +306,10 @@ int main(int argc, char ** argv) {
             t_last = t_now;
         }
 
-        // run the inference
+        // Run the inference
         {
+            // Params
             whisper_full_params wparams = whisper_full_default_params(WHISPER_SAMPLING_GREEDY);
-
             wparams.print_progress   = false;
             wparams.print_special    = params.print_special;
             wparams.print_realtime   = false;
@@ -336,73 +319,63 @@ int main(int argc, char ** argv) {
             wparams.max_tokens       = params.max_tokens;
             wparams.language         = params.language.c_str();
             wparams.n_threads        = params.n_threads;
-
             wparams.audio_ctx        = params.audio_ctx;
-
-            wparams.tdrz_enable      = params.tinydiarize; // [TDRZ]
-
-            // disable temperature fallback
-            //wparams.temperature_inc  = -1.0f;
-            wparams.temperature_inc  = params.no_fallback ? 0.0f : wparams.temperature_inc;
-
+            wparams.tdrz_enable      = params.tinydiarize; //wparams.temperature_inc  = -1.0f; // disable temperature fallback
+            wparams.temperature_inc  = params.no_fallback ? 0.0f : wparams.temperature_inc; 
             wparams.prompt_tokens    = params.no_context ? nullptr : prompt_tokens.data();
             wparams.prompt_n_tokens  = params.no_context ? 0       : prompt_tokens.size();
 
+            // Process
             if (whisper_full(ctx, wparams, pcmf32.data(), pcmf32.size()) != 0) {
                 fprintf(stderr, "%s: failed to process audio\n", argv[0]);
                 return 6;
             }
 
-            // print result;
+            // Print result;
             {
+                // No voice activity detection mode
                 if (!use_vad) {
+                    // Non-VAD mode
                     printf("\33[2K\r");
-
-                    // print long empty line to clear the previous line
-                    printf("%s", std::string(100, ' ').c_str());
-
+                    printf("%s", std::string(100, ' ').c_str()); // Print long empty line to clear the previous line
                     printf("\33[2K\r");
                 } else {
+                    // VAD mode
                     const int64_t t1 = (t_last - t_start).count()/1000000;
                     const int64_t t0 = std::max(0.0, t1 - pcmf32.size()*1000.0/WHISPER_SAMPLE_RATE);
-
                     printf("\n");
                     printf("### Transcription %d START | t0 = %d ms | t1 = %d ms\n", n_iter, (int) t0, (int) t1);
                     printf("\n");
                 }
 
+                // Get segments
                 const int n_segments = whisper_full_n_segments(ctx);
                 for (int i = 0; i < n_segments; ++i) {
                     const char * text = whisper_full_get_segment_text(ctx, i);
 
+                    // If no timestamps needed
                     if (params.no_timestamps) {
+                        // Print text
                         printf("%s", text);
 
-                        if (strstr(text, "how") != NULL) gen_image(text);
+                        // If the user said "Show", then show them an image
+                        if (strcasestr(text, "Show") != NULL) create_image(text);
 
+                        // Show
                         fflush(stdout);
 
-                        if (params.fname_out.length() > 0) {
-                            fout << text;
-                        }
+                        // Write to file
+                        if (params.fname_out.length() > 0) fout << text;
                     } else {
+                        // Print timestamps
                         const int64_t t0 = whisper_full_get_segment_t0(ctx, i);
                         const int64_t t1 = whisper_full_get_segment_t1(ctx, i);
-
                         std::string output = "[" + to_timestamp(t0, false) + " --> " + to_timestamp(t1, false) + "]  " + text;
-
-                        if (whisper_full_get_segment_speaker_turn_next(ctx, i)) {
-                            output += " [SPEAKER_TURN]";
-                        }
-
+                        if (whisper_full_get_segment_speaker_turn_next(ctx, i)) output += " [SPEAKER_TURN]";
                         output += "\n";
-
                         printf("%s", output.c_str());
                         fflush(stdout);
-
-                        if (params.fname_out.length() > 0) {
-                            fout << output;
-                        }
+                        if (params.fname_out.length() > 0) fout << output;
                     }
                 }
 
@@ -421,13 +394,12 @@ int main(int argc, char ** argv) {
             if (!use_vad && (n_iter % n_new_line) == 0) {
                 printf("\n");
 
-                // keep part of the audio for next iteration to try to mitigate word boundary issues
+                // Keep part of the audio for next iteration to try to mitigate word boundary issues
                 pcmf32_old = std::vector<float>(pcmf32.end() - n_samples_keep, pcmf32.end());
 
                 // Add tokens of the last full length segment as the prompt
                 if (!params.no_context) {
                     prompt_tokens.clear();
-
                     const int n_segments = whisper_full_n_segments(ctx);
                     for (int i = 0; i < n_segments; ++i) {
                         const int token_count = whisper_full_n_tokens(ctx, i);
@@ -441,18 +413,16 @@ int main(int argc, char ** argv) {
         }
     }
 
+    // Done
     audio.pause();
-
     whisper_print_timings(ctx);
     whisper_free(ctx);
-
     return 0;
 }
 
 
 
-
-int gen_image(const char* prompt) {
+bool create_image(const char* prompt) {
     char image_id[128];
     char image_url[512];
 
