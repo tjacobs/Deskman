@@ -7,11 +7,11 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 #include <curl/curl.h>
+#include "keys.h"
 
 // Generate images from Black forest labs Flux
 #define API_URL_POST "https://api.bfl.ml/v1/flux-pro-1.1"
 #define API_URL_GET "https://api.bfl.ml/v1/get_result?id=%s"
-#define API_KEY ""
 #define TEMP_IMAGE_FILE "generated_image.jpg"
 
 // Buffer to hold the response data from CURL
