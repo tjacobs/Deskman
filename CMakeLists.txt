@@ -40,7 +40,13 @@ set(GGML_SANITIZE_UNDEFINED ${WHISPER_SANITIZE_UNDEFINED})
 set(GGML_ALL_WARNINGS       ${WHISPER_ALL_WARNINGS})
 set(GGML_FATAL_WARNINGS     ${WHISPER_FATAL_WARNINGS})
 
+# Includes and libs
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/whisper/)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/whisper/listen/)
+link_directories(/usr/local/lib)
+
 # Build
 add_subdirectory(whisper/ggml)
+add_subdirectory(whisper/listen)
 add_subdirectory(whisper)
-add_subdirectory(listen)
+add_subdirectory(src)

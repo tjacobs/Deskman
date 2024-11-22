@@ -97,10 +97,4 @@ endif()
 add_library(json_cpp INTERFACE)
 target_include_directories(json_cpp INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
 
-# examples
-
-include_directories(${CMAKE_CURRENT_SOURCE_DIR})
-
-add_subdirectory(stream)
-set_target_properties(stream PROPERTIES FOLDER "examples")
 
