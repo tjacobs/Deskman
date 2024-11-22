@@ -19,6 +19,7 @@ Copy whisper base model [models/ggml-base.en.bin](https://huggingface.co/ggergan
 Speak
 
 ## Demos
+(sound on)
 
 https://github.com/user-attachments/assets/9e1eba9e-e1f2-4e75-b556-cc84d08ca99f
 
