@@ -1,11 +1,3 @@
-# TODO: should not use this
-if (WIN32)
-    add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
-
-    if (BUILD_SHARED_LIBS)
-        set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
-    endif()
-endif()
 
 if (WHISPER_COREML)
     find_library(FOUNDATION_FRAMEWORK Foundation)
