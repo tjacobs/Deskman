@@ -12,7 +12,7 @@ make
 ```
 
 ## To run
-Copy whisper base model models/ggml-base.en.bin into build/models/
+Copy whisper base model [models/ggml-base.en.bin](https://huggingface.co/ggerganov/whisper.cpp/blob/main/ggml-base.bin) into build/models/
 ```
 ./stream
 ```
