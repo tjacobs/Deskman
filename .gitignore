@@ -2,3 +2,4 @@
 .DS_Store
 build/
 src/keys.h
+models/ggml-base.en.bin
