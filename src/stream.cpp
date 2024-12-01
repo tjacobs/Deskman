@@ -18,6 +18,8 @@
 
 bool create_window();
 bool create_image(const char* prompt);
+bool show_image(const char* image_file);
+bool close_window();
 
 // Command-line parameters
 struct whisper_params {
@@ -46,11 +48,29 @@ struct whisper_params {
 static bool whisper_params_parse(int argc, char ** argv, whisper_params & params);
 void whisper_print_usage(int argc, char ** argv, const whisper_params & params);
 
-
 int main(int argc, char ** argv) {
 
     // Create window
     create_window();
+
+    // Test rendering
+    if (true) {
+        // Show image
+        show_image("head.jpg");
+
+        // Process input
+        bool quit = false;
+        SDL_Event event;
+        while (!quit) {
+            while (SDL_PollEvent(&event) != 0)
+                if (event.type == SDL_QUIT || (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE)) quit = true;
+            SDL_Delay(16);
+        }
+
+        // Done
+        close_window();
+        return 0;
+    }
 
     // Parse params
     whisper_params params;

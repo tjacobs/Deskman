@@ -22,6 +22,7 @@ struct Memory {
 
 bool create_window();
 bool create_image(const char* prompt);
+bool show_image(const char* image_file);
 bool generate_image(const char *prompt, char *image_id);
 bool get_image_url(const char *image_id, char *image_url);
 bool download_image(const char* url, const char* filename);
@@ -70,7 +71,6 @@ bool create_window() {
     // Show window
     SDL_Event event;
     bool quit = false;
-//    for (int i = 0; i < 100; i++) {
         while (SDL_PollEvent(&event) != 0) {
             if (event.type == SDL_QUIT || (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE)) {
                 quit = true;
@@ -85,7 +85,6 @@ bool create_window() {
         SDL_RenderPresent(renderer);
 
         SDL_Delay(16); // Limit frame rate
-//    }
     return true;
 }
 
@@ -115,8 +114,13 @@ bool create_image(const char* prompt) {
     }
     printf("Image downloaded: %s\n", TEMP_IMAGE_FILE);
 
+    // Show image
+    return show_image(TEMP_IMAGE_FILE);
+}
+
+bool show_image(const char* image_file) {
     // Load downloaded image
-    image = IMG_Load(TEMP_IMAGE_FILE);
+    image = IMG_Load(image_file);
     if (!image) {
         fprintf(stderr, "Unable to load image: %s\n", SDL_GetError());
         return false;
