@@ -1,6 +1,6 @@
 # Stream
 set(TARGET stream)
-add_executable(${TARGET} stream.cpp image.cpp box.cpp)
+add_executable(${TARGET} stream.cpp image.cpp box.cpp main.cpp)
 
 include(DefaultTargetOptions)
 
