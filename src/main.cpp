@@ -7,10 +7,15 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 
+int mainWhisper(int argc, char ** argv);
+
 int main(int argc, char ** argv) {
 
     // Create window
     create_window();
+
+    // Listen
+    if (true) mainWhisper(argc, argv);
 
     // Test rendering
     if (true) {
