@@ -18,3 +18,7 @@ typedef struct {
     int mouth_smile;  // Curve for the smile (positive for smile, negative for frown)
 
 } Face;
+
+Face create_face(int center_x, int center_y);
+void render_face(SDL_Renderer* renderer, Face* face);
+void update_face(Face* face, int eye_squint, int smile_curve);
