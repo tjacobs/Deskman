@@ -4,6 +4,7 @@
 #include "common-sdl.h"
 #include "common.h"
 #include "whisper.h"
+#include "box.h"
 #include <cassert>
 #include <cstdio>
 #include <string>
@@ -16,10 +17,13 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+// Window
 bool create_window();
 bool create_image(const char* prompt);
 bool show_image(const char* image_file);
 bool close_window();
+extern SDL_Renderer* renderer;
+
 
 // Command-line parameters
 struct whisper_params {
@@ -58,12 +62,28 @@ int main(int argc, char ** argv) {
         // Show image
         show_image("head.jpg");
 
+        Box box = create_box(100, 100, 50, 50, 5, 5); // Initial position, size, and speed
+
         // Process input
         bool quit = false;
         SDL_Event event;
         while (!quit) {
             while (SDL_PollEvent(&event) != 0)
                 if (event.type == SDL_QUIT || (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE)) quit = true;
+
+            // Move the box
+            move_box(&box, 800, 600); // Assuming 800x600 screen size
+
+            // Clear the screen
+            SDL_SetRenderDrawColor(renderer, 200, 200, 200, 255);
+            SDL_RenderClear(renderer);
+
+            // Render the box
+            render_box(renderer, &box);
+
+            // Present the updated screen
+            SDL_RenderPresent(renderer);
+
             SDL_Delay(16);
         }
 

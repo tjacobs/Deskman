@@ -8,6 +8,7 @@
 #include <SDL2/SDL_image.h>
 #include <curl/curl.h>
 #include "keys.h"
+#include "box.h"
 
 // Generate images from Black forest labs Flux
 #define API_URL_POST "https://api.bfl.ml/v1/flux-pro-1.1"
