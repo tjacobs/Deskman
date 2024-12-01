@@ -24,16 +24,13 @@ Face create_face(int center_x, int center_y) {
 void render_face(SDL_Renderer* renderer, Face* face) {
     // Render eyes
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255); // Black for eyes
-
-    SDL_Rect left_eye = {face->eye_left_x, face->eye_left_y, face->eye_width, face->eye_height};
+    SDL_Rect left_eye = {face->eye_left_x - face->eye_width, face->eye_left_y, face->eye_width, face->eye_height};
     SDL_Rect right_eye = {face->eye_right_x, face->eye_right_y, face->eye_width, face->eye_height};
-
     SDL_RenderFillRect(renderer, &left_eye);
     SDL_RenderFillRect(renderer, &right_eye);
 
     // Render mouth
     SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255); // Red for mouth
-
     SDL_Rect mouth = {face->mouth_x, face->mouth_y, face->mouth_width, face->mouth_height};
     SDL_RenderFillRect(renderer, &mouth);
 
@@ -45,9 +42,9 @@ void render_face(SDL_Renderer* renderer, Face* face) {
     }
 }
 
-void update_face(Face* face, int eye_squint, int smile_curve) {
+void update_face(Face* face, int eye_height, int smile_curve) {
     // Eye muscles control the height (squinting)
-    face->eye_height = 15 - eye_squint; // Reduce eye height for squint
+    face->eye_height = eye_height; // Reduce eye height for squint
 
     // Mouth muscles control the curvature
     face->mouth_smile = smile_curve; // Set curvature for smile or frown

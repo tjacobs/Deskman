@@ -35,8 +35,8 @@ int main(int argc, char ** argv) {
 
                 // Adjust face with keys
                 if (event.type == SDL_KEYDOWN) {
-                    if (event.key.keysym.sym == SDLK_UP) update_face(&face, 5, face.mouth_smile);
-                    if (event.key.keysym.sym == SDLK_DOWN) update_face(&face, -5, face.mouth_smile);
+                    if (event.key.keysym.sym == SDLK_UP) update_face(&face, face.eye_height - 1, face.mouth_smile + 1);
+                    if (event.key.keysym.sym == SDLK_DOWN) update_face(&face, face.eye_height + 1, face.mouth_smile - 1);
                     if (event.key.keysym.sym == SDLK_RIGHT) update_face(&face, face.eye_height, 10);
                     if (event.key.keysym.sym == SDLK_LEFT) update_face(&face, face.eye_height, -10);
                 }
