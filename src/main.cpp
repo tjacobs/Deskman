@@ -20,10 +20,9 @@ int main(int argc, char ** argv) {
     // Test rendering
     if (true) {
         // Show image
-        show_image("head.jpg");
+        //show_image("head.jpg");
 
         Face face = create_face(400, 300); // Center face on the screen
-        Box box = create_box(100, 100, 50, 50, 5, 5); // Initial position, size, and speed
 
         // Process input
         bool quit = false;
@@ -35,15 +34,12 @@ int main(int argc, char ** argv) {
 
                 // Adjust face with keys
                 if (event.type == SDL_KEYDOWN) {
-                    if (event.key.keysym.sym == SDLK_UP) update_face(&face, face.eye_height - 1, face.mouth_smile + 1);
-                    if (event.key.keysym.sym == SDLK_DOWN) update_face(&face, face.eye_height + 1, face.mouth_smile - 1);
+                    if (event.key.keysym.sym == SDLK_UP)    update_face(&face, face.eye_height, face.mouth_smile + 1);
+                    if (event.key.keysym.sym == SDLK_DOWN)  update_face(&face, face.eye_height, face.mouth_smile - 1);
                     if (event.key.keysym.sym == SDLK_RIGHT) update_face(&face, face.eye_height, 10);
-                    if (event.key.keysym.sym == SDLK_LEFT) update_face(&face, face.eye_height, -10);
+                    if (event.key.keysym.sym == SDLK_LEFT)  update_face(&face, face.eye_height, -10);
                 }
             }
-
-            // Move the box
-            //move_box(&box, 800, 600); // Assuming 800x600 screen size
 
             // Clear the screen
             SDL_SetRenderDrawColor(renderer, 200, 200, 200, 255);
@@ -51,9 +47,6 @@ int main(int argc, char ** argv) {
 
             // Render the face
             render_face(renderer, &face);
-
-            // Render the box
-            //render_box(renderer, &box);
 
             // Present the updated screen
             SDL_RenderPresent(renderer);
