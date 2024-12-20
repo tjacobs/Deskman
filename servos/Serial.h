@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <cstring>
 #include <linux/serial.h>
+#include <sys/ioctl.h>
 
 class SerialPort {
 private:
