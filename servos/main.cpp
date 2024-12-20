@@ -3,7 +3,7 @@
 
 int main() {
 	// Open serial
-    std::string port_name = "/dev/tty.usbmodem585A0081791";
+    std::string port_name = "/dev/ttyAMA0";
     SerialPort serial(port_name);
     if (!serial.openPort()) return 1;
 
@@ -12,7 +12,7 @@ int main() {
 	st.pSerial = &serial;
 
 	// Move
-	int x = 0;
+	int x = 1000;
 	int y = 1500;
 	st.WritePosEx(1, x, 500, 10);
 	st.WritePosEx(2, y, 500, 10);
