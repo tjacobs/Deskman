@@ -7,7 +7,7 @@
 #include <stdlib.h>
 
 #define SERIAL_PORT "/dev/ttyACM0"
-#define BAUD_RATE B9600
+#define BAUD_RATE 1000000
 
 int configureSerialPort(int fd) {
     struct termios options;
@@ -19,7 +19,7 @@ int configureSerialPort(int fd) {
     }
 
     // Set the baud rates
-    if (cfsetispeed(&options, BAUD_RATE) != 0 || cfsetospeed(&options, BAUD_RATE) != 0) {
+    if (cfsetspeed(&options, BAUD_RATE) != 0) {
         perror("Failed to set baud rate");
         return -1;
     }
@@ -51,8 +51,7 @@ int configureSerialPort(int fd) {
 }
 
 int main() {
-    int serial_fd = open(SERIAL_PORT, O_RDWR | O_NOCTTY | O_NDELAY);
-
+    int serial_fd = open(SERIAL_PORT, O_RDWR | O_NOCTTY);
     if (serial_fd == -1) {
         perror("Failed to open serial port");
         return 1;
@@ -76,16 +75,21 @@ int main() {
 
     printf("Written %zd bytes: %s\n", bytes_written, test_message);
 
-    // Read data from the serial port
+    // Wait for data to be available and read it
     char buffer[256];
     memset(buffer, 0, sizeof(buffer));
 
-    ssize_t bytes_read = read(serial_fd, buffer, sizeof(buffer) - 1);
-    if (bytes_read < 0) {
-        perror("Failed to read from serial port");
-        close(serial_fd);
-        return 1;
-    }
+    printf("Waiting for response...\n");
+
+    ssize_t bytes_read;
+    do {
+        bytes_read = read(serial_fd, buffer, sizeof(buffer) - 1);
+        if (bytes_read < 0 && errno != EAGAIN) {
+            perror("Failed to read from serial port");
+            close(serial_fd);
+            return 1;
+        }
+    } while (bytes_read <= 0); // Retry if no data is available yet
 
     printf("Read %zd bytes: %s\n", bytes_read, buffer);
 
