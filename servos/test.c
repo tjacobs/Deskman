@@ -6,7 +6,7 @@
 #include <errno.h>
 #include <stdlib.h>
 
-#define SERIAL_PORT "/dev/ttyACM0"
+#define SERIAL_PORT "/dev/ttyAMA0"
 #define BAUD_RATE 1000000
 
 int configureSerialPort(int fd) {
