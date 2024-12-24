@@ -25,27 +25,32 @@ SDL_Renderer* renderer = NULL;
 SDL_Surface* image = NULL;
 SDL_Texture* texture = NULL;
 
+int screen_width;
+int screen_height;
+
 bool create_window() {
-    // Initialize SDL video subsystem
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
         fprintf(stderr, "SDL could not initialize: %s\n", SDL_GetError());
-        return false;
+        return -1;
     }
 
-    // Initialize SDL_image for multiple image formats
     if (IMG_Init(IMG_INIT_JPG | IMG_INIT_PNG | IMG_INIT_TIF) == 0) {
         fprintf(stderr, "SDL_image could not initialize: %s\n", SDL_GetError());
         SDL_Quit();
-        return false;
+        return -1;
     }
 
-    // Create SDL window
-    window = SDL_CreateWindow("Image Viewer", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 800, 600, SDL_WINDOW_SHOWN);
+    SDL_DisplayMode display_mode;
+    SDL_GetCurrentDisplayMode(0, &display_mode);
+    screen_width = display_mode.w;
+    screen_height = display_mode.h;
+
+    SDL_Window* window = SDL_CreateWindow("", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, screen_width, screen_height, SDL_WINDOW_FULLSCREEN);
     if (!window) {
         fprintf(stderr, "Window could not be created: %s\n", SDL_GetError());
         IMG_Quit();
         SDL_Quit();
-        return false;
+        return -1;
     }
 
     // Create renderer for the window

@@ -9,6 +9,9 @@
 
 int mainWhisper(int argc, char ** argv);
 
+extern int screen_width;
+extern int screen_height;
+
 int main(int argc, char ** argv) {
 
     // Create window
@@ -22,7 +25,7 @@ int main(int argc, char ** argv) {
         // Show image
         //show_image("head.jpg");
 
-        Face face = create_face(400, 300); // Center face on the screen
+        Face face = create_face(screen_width, screen_height);
 
         // Process input
         bool quit = false;
