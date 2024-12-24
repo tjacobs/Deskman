@@ -130,7 +130,7 @@ public:
     }
 
     int writeOut(unsigned char *nDat, int nLen) {
-        printf("Writing: %d bytes.\n", nLen);
+        //printf("Writing: %d bytes.\n", nLen);
         std::string data(reinterpret_cast<char*>(nDat), nLen);
         writeData(data);
         return nLen;

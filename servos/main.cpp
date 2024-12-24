@@ -11,24 +11,27 @@ int main() {
 	SMS_STS st;
 	st.pSerial = &serial;
 
+int x = 0;
+int y = 1500;
+
+do 
+{
+
+ x += 1;
+ y += 1;
+ if (x > 2000) x = 0;
+ if (y > 2000) y = 1500;
+
 	// Move
-	int x = 1000;
-	int y = 1500;
-	st.WritePosEx(1, x, 500, 10);
-	st.WritePosEx(2, y, 500, 10);
+	st.WritePosEx(1, x, 300, 10);
+	st.WritePosEx(2, y, 300, 10);
 
 	int pos1 = st.ReadPos(1);
 	printf("Pos1: %d\n", pos1);
 
-    /*std::string message = "\n";
-    if (serial.writeData(message)) {
-        std::cout << "Message sent: " << message << std::endl;
-    }
+usleep(10000);
 
-    std::string response = serial.readData();
-    if (!response.empty()) {
-        std::cout << "Message received: " << response << std::endl;
-    }*/
+} while (true);
 
 	return 0;
 }
