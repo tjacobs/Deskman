@@ -2,6 +2,16 @@
 #include <math.h>
 #include <stdio.h>
 
+void move_face(int smile) {
+    // Move the face
+    update_face(&face, 0, smile);
+}
+
+void move_head(int x, int y) {
+    // Move the head
+    printf("Moving head: %d %d\n", x, y);
+}
+
 Face create_face(int screen_width, int screen_height) {
     Face face;
 

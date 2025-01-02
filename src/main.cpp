@@ -11,6 +11,7 @@ int mainWhisper(int argc, char ** argv);
 
 extern int screen_width;
 extern int screen_height;
+Face face;
 
 int main(int argc, char ** argv) {
 
@@ -18,14 +19,14 @@ int main(int argc, char ** argv) {
     create_window();
 
     // Listen
-    if (false) mainWhisper(argc, argv);
+    if (true) mainWhisper(argc, argv);
 
     // Test rendering
     if (true) {
         // Show image
         //show_image("head.jpg");
 
-        Face face = create_face(screen_width, screen_height);
+        face = create_face(screen_width, screen_height);
 
         // Process input
         bool quit = false;

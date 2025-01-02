@@ -1,6 +1,9 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 
+void move_face(int smile);
+void move_head(int x, int y);
+
 typedef struct {
     // Eye parameters
     int eye_left_x;  // X position of the left eye
@@ -18,6 +21,8 @@ typedef struct {
     int mouth_smile;  // Curve for the smile (positive for smile, negative for frown)
 
 } Face;
+
+extern Face face;
 
 Face create_face(int center_x, int center_y);
 void render_face(SDL_Renderer* renderer, Face* face);
