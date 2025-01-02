@@ -46,7 +46,6 @@ static bool whisper_params_parse(int argc, char ** argv, whisper_params & params
 void whisper_print_usage(int argc, char ** argv, const whisper_params & params);
 
 int mainWhisper(int argc, char ** argv) {
-
     // Parse params
     whisper_params params;
     if (whisper_params_parse(argc, argv, params) == false) return 1;
@@ -149,61 +148,73 @@ int mainWhisper(int argc, char ** argv) {
         // Process new audio, if not using Voice Activity Detection
         if (!use_vad) {
             while (true) {
+                // Get audio
                 audio.get(params.step_ms, pcmf32_new);
 
+                // Check if the audio is too large
                 if ((int) pcmf32_new.size() > 2*n_samples_step) {
                     fprintf(stderr, "\n\n%s: WARNING: cannot process audio fast enough, dropping audio ...\n\n", __func__);
                     audio.clear();
                     continue;
                 }
 
+                // Check if the audio is too large
                 if ((int) pcmf32_new.size() >= n_samples_step) {
                     audio.clear();
                     break;
                 }
 
+                // Sleep for 1ms
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
             }
 
+            // Get the size of the new audio
             const int n_samples_new = pcmf32_new.size();
 
             // Take up to params.length_ms audio from previous iteration
             const int n_samples_take = std::min((int) pcmf32_old.size(), std::max(0, n_samples_keep + n_samples_len - n_samples_new));
 
+            // Resize the audio
             pcmf32.resize(n_samples_new + n_samples_take);
 
-            for (int i = 0; i < n_samples_take; i++) {
-                pcmf32[i] = pcmf32_old[pcmf32_old.size() - n_samples_take + i];
-            }
+            // Copy the old audio to the new audio
+            for (int i = 0; i < n_samples_take; i++) pcmf32[i] = pcmf32_old[pcmf32_old.size() - n_samples_take + i];
 
+            // Copy the new audio to the audio
             memcpy(pcmf32.data() + n_samples_take, pcmf32_new.data(), n_samples_new*sizeof(float));
 
+            // Set the old audio to the new audio
             pcmf32_old = pcmf32;
         } else {
+            // Get the current time
             const auto t_now  = std::chrono::high_resolution_clock::now();
+
+            // Get the difference in time
             const auto t_diff = std::chrono::duration_cast<std::chrono::milliseconds>(t_now - t_last).count();
 
+            // If the difference in time is less than 2000ms, sleep for 100ms
             if (t_diff < 2000) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
-
                 continue;
             }
 
+            // Get the audio
             audio.get(2000, pcmf32_new);
 
+            // Check if the audio is speech
             if (::vad_simple(pcmf32_new, WHISPER_SAMPLE_RATE, 1000, params.vad_thold, params.freq_thold, false)) {
+                // Get the audio
                 audio.get(params.length_ms, pcmf32);
             } else {
+                // Sleep for 100ms
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
-
                 continue;
             }
-
             t_last = t_now;
         }
 
         // Run the inference
-        {
+        if (true) {
             // Params
             whisper_full_params wparams = whisper_full_default_params(WHISPER_SAMPLING_GREEDY);
             wparams.print_progress   = false;
@@ -227,8 +238,8 @@ int mainWhisper(int argc, char ** argv) {
                 return 6;
             }
 
-            // Print result;
-            {
+            // Print result
+            if (true) {
                 // No voice activity detection mode
                 if (!use_vad) {
                     // Non-VAD mode
@@ -275,22 +286,27 @@ int mainWhisper(int argc, char ** argv) {
                     }
                 }
 
+                // Write to file
                 if (params.fname_out.length() > 0) {
                     fout << std::endl;
                 }
 
+                // Print end of transcription
                 if (use_vad) {
                     printf("\n");
                     printf("### Transcription %d END\n", n_iter);
                 }
             }
 
+            // Next
             ++n_iter;
 
+            // Keep part of the audio for next iteration to try to mitigate word boundary issues
             if (!use_vad && (n_iter % n_new_line) == 0) {
+                // Print new line
                 printf("\n");
 
-                // Keep part of the audio for next iteration to try to mitigate word boundary issues
+                // Set the old audio to the last n_samples_keep samples
                 pcmf32_old = std::vector<float>(pcmf32.end() - n_samples_keep, pcmf32.end());
 
                 // Add tokens of the last full length segment as the prompt
