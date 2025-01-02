@@ -17,6 +17,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include "image.h"
+#include "face.h"
 
 // Command-line parameters
 struct whisper_params {
@@ -266,7 +267,13 @@ int mainWhisper(int argc, char ** argv) {
                         printf("%s", text);
 
                         // If the user said "Show", then show them an image
-                        if (strcasestr(text, "Show") != NULL) create_image(text);
+                        if (strcasestr(text, "show" ) != NULL) create_image(text);
+                        if (strcasestr(text, "up" ) != NULL) move_head(0, 1);
+                        if (strcasestr(text, "down") != NULL) move_head(0, -1);
+                        if (strcasestr(text, "left"   ) != NULL) move_head(1, 0);
+                        if (strcasestr(text, "right" ) != NULL) move_head(-1, 0);
+                        if (strcasestr(text, "smile") != NULL) move_face(1);
+                        if (strcasestr(text, "frown") != NULL) move_face(-1);
 
                         // Show
                         fflush(stdout);
