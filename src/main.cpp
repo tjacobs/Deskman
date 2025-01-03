@@ -6,6 +6,7 @@
 #include "face.h"
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
+#include <thread>
 
 int mainWhisper(int argc, char ** argv);
 
@@ -14,14 +15,16 @@ extern int screen_height;
 Face face;
 
 int main(int argc, char ** argv) {
-
     // Create window
     create_window();
 
-    // Listen
-    if (true) mainWhisper(argc, argv);
+    // Create a thread for speech recognition
+    std::thread speech_thread([argc, argv]() {
+        mainWhisper(argc, argv);
+    });
+    speech_thread.detach();
 
-    // Test rendering
+    // Face rendering
     if (true) {
         // Show image
         //show_image("head.jpg");

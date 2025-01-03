@@ -10,6 +10,7 @@ void move_face(int smile) {
 void move_head(int x, int y) {
     // Move the head
     printf("Moving head: %d %d\n", x, y);
+    update_face(&face, 0, y);
 }
 
 Face create_face(int screen_width, int screen_height) {
@@ -54,8 +55,8 @@ void render_face(SDL_Renderer* renderer, Face* face) {
 }
 
 void update_face(Face* face, int eye_height, int smile_curve) {
-    face->eye_height = eye_height;
-    face->mouth_smile = smile_curve;
+    face->eye_height += eye_height;
+    face->mouth_smile += smile_curve;
 }
 
 
