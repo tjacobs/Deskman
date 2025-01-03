@@ -2,12 +2,13 @@
 #include "../servos/SCSerial.h"
 #include "../servos/SMS_STS.h"
 
+std::string port_name = "/dev/ttyAMA0";
+
 SMS_STS st;
+SerialPort serial(port_name);
 
 int open_servos() {
 	// Open serial
-    std::string port_name = "/dev/ttyAMA0";
-    SerialPort serial(port_name);
     if (!serial.openPort()) return 1;
 	st.pSerial = &serial;
     return 0;

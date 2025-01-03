@@ -20,11 +20,11 @@ int main(int argc, char ** argv) {
     create_window();
 
     // Connect to servos
-    open_servos();
+    if (open_servos() != 0) printf("Could not open servos\n");
 
     // Create a thread for speech recognition
     std::thread speech_thread([argc, argv]() {
-        mainWhisper(argc, argv);
+        //mainWhisper(argc, argv);
     });
     speech_thread.detach();
 
@@ -47,8 +47,8 @@ int main(int argc, char ** argv) {
                 if (event.type == SDL_KEYDOWN) {
                     if (event.key.keysym.sym == SDLK_UP)    update_face(&face, face.eye_height, face.mouth_smile + 1);
                     if (event.key.keysym.sym == SDLK_DOWN)  update_face(&face, face.eye_height, face.mouth_smile - 1);
-                    if (event.key.keysym.sym == SDLK_RIGHT) update_face(&face, face.eye_height, 10);
-                    if (event.key.keysym.sym == SDLK_LEFT)  update_face(&face, face.eye_height, -10);
+                    if (event.key.keysym.sym == SDLK_RIGHT) move_head(10, 50);
+                    if (event.key.keysym.sym == SDLK_LEFT)  move_head(30, 90);
                 }
             }
 
