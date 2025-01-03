@@ -8,12 +8,15 @@ void move_face(int smile) {
     update_face(&face, 0, smile);
 }
 
+int head_x = 100;
+int head_y = 1700;
+
 void move_head(int x, int y) {
     // Move the head
-    printf("Moving head: %d %d\n", x, y);
-    move_servos(x, y);
-
-    update_face(&face, 0, y);
+    head_x += x;
+    head_y += y;
+    printf("Moving head to: %d %d\n", head_x, head_y);
+    move_servos(head_x, head_y);
 }
 
 Face create_face(int screen_width, int screen_height) {

@@ -19,10 +19,12 @@ void move_servos(int x, int y) {
     if (!st.pSerial) return;
 
     // Limit
+    int min_x = 0;
+    int min_y = 1500;
     int max_x = 2000;
     int max_y = 2000;
-    if (x < 0) x = 0;
-    if (y < 0) y = 0;
+    if (x < min_x) x = min_x;
+    if (y < min_y) y = min_y;
     if (x > max_x) x = max_x;
     if (y > max_y) y = max_y;
 

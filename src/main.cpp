@@ -45,10 +45,10 @@ int main(int argc, char ** argv) {
 
                 // Adjust face with keys
                 if (event.type == SDL_KEYDOWN) {
-                    if (event.key.keysym.sym == SDLK_UP)    update_face(&face, face.eye_height, face.mouth_smile + 1);
-                    if (event.key.keysym.sym == SDLK_DOWN)  update_face(&face, face.eye_height, face.mouth_smile - 1);
-                    if (event.key.keysym.sym == SDLK_RIGHT) move_head(10, 50);
-                    if (event.key.keysym.sym == SDLK_LEFT)  move_head(30, 90);
+                    if (event.key.keysym.sym == SDLK_UP)    { move_head(0, 10); update_face(&face, 0, 1); }
+                    if (event.key.keysym.sym == SDLK_DOWN)  { move_head(0, -10); update_face(&face, 0, -1); }
+                    if (event.key.keysym.sym == SDLK_RIGHT) { move_head(10, 0); }
+                    if (event.key.keysym.sym == SDLK_LEFT)  { move_head(-10, 0); }
                 }
             }
 
