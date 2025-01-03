@@ -7,6 +7,9 @@
 #include <cstring>
 #ifdef __linux__
 #include <linux/serial.h>
+#warning Baud rate set!
+#else
+#warning No baud rate set!
 #endif
 #include <sys/ioctl.h>
 
@@ -75,6 +78,8 @@ public:
             std::cerr << "Failed to set serial struct: " << strerror(errno) << std::endl;
             return false;
         }
+#else
+#warning Did not set baud rate!
 #endif
         return true;
     }

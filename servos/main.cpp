@@ -14,8 +14,8 @@ int main() {
 
     do {
         // Update
-        x += 10;
-        y += 10;
+        x += 1;
+        y += 1;
         if (x > 2000) x = 0;
         if (y > 2000) y = 1500;
 
@@ -25,7 +25,7 @@ int main() {
 
         // Read
         int pos1 = st.ReadPos(1);
-	printf("Pos1: %d\n", pos1);
+	printf("Pos1: %d  (x=%d)\n", pos1, x);
 
         // Sleep
         usleep(10000);
