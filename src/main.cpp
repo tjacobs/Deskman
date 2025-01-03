@@ -4,6 +4,7 @@
 #include "image.h"
 #include "box.h"
 #include "face.h"
+#include "servos.h"
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 #include <thread>
@@ -17,6 +18,9 @@ Face face;
 int main(int argc, char ** argv) {
     // Create window
     create_window();
+
+    // Connect to servos
+    open_servos();
 
     // Create a thread for speech recognition
     std::thread speech_thread([argc, argv]() {
