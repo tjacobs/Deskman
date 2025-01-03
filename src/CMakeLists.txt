@@ -1,6 +1,7 @@
 # Stream
 set(TARGET stream)
-add_executable(${TARGET} stream.cpp image.cpp box.cpp face.cpp main.cpp)
+add_executable(${TARGET} stream.cpp image.cpp box.cpp face.cpp main.cpp servos.cpp 
+                        ../servos/SMS_STS.cpp ../servos/SCS.cpp ../servos/SCSerial.cpp)
 
 include(DefaultTargetOptions)
 

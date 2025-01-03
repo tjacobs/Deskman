@@ -5,7 +5,9 @@
 #include <termios.h>
 #include <unistd.h>
 #include <cstring>
+#ifdef __linux__
 #include <linux/serial.h>
+#endif
 #include <sys/ioctl.h>
 
 class SerialPort {
@@ -55,27 +57,25 @@ public:
             return false;
         }
 
+#ifdef __linux__
         // Custom baud rate configuration
         struct serial_struct serial;
         if (ioctl(serial_fd, TIOCGSERIAL, &serial) != 0) {
             std::cerr << "Failed to get serial struct: " << strerror(errno) << std::endl;
             return false;
         }
-
         serial.flags &= ~ASYNC_SPD_MASK;
         serial.flags |= ASYNC_SPD_CUST;
         serial.custom_divisor = serial.baud_base / baud_rate;
-
         if (serial.custom_divisor == 0) {
             std::cerr << "Invalid custom divisor for baud rate " << baud_rate << std::endl;
             return false;
         }
-
         if (ioctl(serial_fd, TIOCSSERIAL, &serial) != 0) {
             std::cerr << "Failed to set serial struct: " << strerror(errno) << std::endl;
             return false;
         }
-
+#endif
         return true;
     }
 

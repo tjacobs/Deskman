@@ -268,8 +268,8 @@ int mainWhisper(int argc, char ** argv) {
                         if (strcasestr(text, "down") != NULL) move_head(0, -10);
                         if (strcasestr(text, "left"   ) != NULL) move_head(10, 0);
                         if (strcasestr(text, "right" ) != NULL) move_head(-10, 0);
-                        if (strcasestr(text, "smile") != NULL) move_face(1);
-                        if (strcasestr(text, "frown") != NULL) move_face(-1);
+                        if (strcasestr(text, "smile") != NULL) move_face(10);
+                        if (strcasestr(text, "frown") != NULL) move_face(-10);
 
                         // Show
                         fflush(stdout);

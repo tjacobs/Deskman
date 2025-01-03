@@ -1,6 +1,7 @@
 #include "face.h"
 #include <math.h>
 #include <stdio.h>
+#include "servos.h"
 
 void move_face(int smile) {
     // Move the face
@@ -10,6 +11,8 @@ void move_face(int smile) {
 void move_head(int x, int y) {
     // Move the head
     printf("Moving head: %d %d\n", x, y);
+    move_servos(x, y);
+
     update_face(&face, 0, y);
 }
 
