@@ -1,5 +1,5 @@
-
-// Listen to speech, show images based on commands spoken.
+// Main program for Teleport robot control.
+// Thomas Jacobs, 2025.
 
 #include "image.h"
 #include "box.h"
@@ -9,10 +9,14 @@
 #include <SDL2/SDL_image.h>
 #include <thread>
 
+// Speech detection
 int mainWhisper(int argc, char ** argv);
 
+// Window
 extern int screen_width;
 extern int screen_height;
+
+// Face
 Face face;
 
 int main(int argc, char ** argv) {
@@ -30,9 +34,7 @@ int main(int argc, char ** argv) {
 
     // Face rendering
     if (true) {
-        // Show image
-        //show_image("head.jpg");
-
+        // Create face
         face = create_face(screen_width, screen_height);
 
         // Process input
@@ -41,6 +43,7 @@ int main(int argc, char ** argv) {
         while (!quit) {
             // Get events
             while (SDL_PollEvent(&event) != 0) {
+                // Quit on ESC
                 if (event.type == SDL_QUIT || (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE)) quit = true;
 
                 // Adjust face with keys
