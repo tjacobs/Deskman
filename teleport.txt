@@ -1,0 +1,17 @@
+DONE - Listen to words
+- Move head on up down left right, yes, no
+- Show words on screen
+- Say hello when person detected
+- Say words
+- Respond with yeah, uhuh, hm, ok, got it, alright
+- Look over there move
+- Detect face expression
+- Recognize specific people
+- Look at face
+- Look at two faces
+- Support iPhone app video call
+- Support Android app video call
+- Support web app video call
+- Listen to words quickly
+- Anticpate next words
+
