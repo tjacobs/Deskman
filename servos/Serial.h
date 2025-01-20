@@ -7,8 +7,6 @@
 #include <cstring>
 #ifdef __linux__
 #include <linux/serial.h>
-#else
-#warning No baud rate set!
 #endif
 #include <sys/ioctl.h>
 
