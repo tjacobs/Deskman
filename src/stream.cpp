@@ -40,7 +40,7 @@ struct whisper_params {
     bool use_gpu       = true;
     bool flash_attn    = false;
     std::string language  = "en";
-    std::string model     = "models/ggml-base.en.bin";
+    std::string model     = "../models/ggml-base.en.bin";
     std::string fname_out;
 };
 static bool whisper_params_parse(int argc, char ** argv, whisper_params & params);
@@ -80,13 +80,16 @@ int mainWhisper(int argc, char ** argv) {
     cparams.use_gpu    = params.use_gpu;
     cparams.flash_attn = params.flash_attn;
     struct whisper_context * ctx = whisper_init_from_file_with_params(params.model.c_str(), cparams);
+    if (!ctx) return -1;
+
+    // Data
     std::vector<float> pcmf32    (n_samples_30s, 0.0f);
     std::vector<float> pcmf32_old;
     std::vector<float> pcmf32_new(n_samples_30s, 0.0f);
     std::vector<whisper_token> prompt_tokens;
 
     // Print info about the processing
-    if (true) {
+    if (false) {
         fprintf(stderr, "\n");
         fprintf(stderr, "%s: processing %d samples (step = %.1f sec / len = %.1f sec / keep = %.1f sec), %d threads, lang = %s, task = %s, timestamps = %d ...\n",
                 __func__,
