@@ -1,9 +1,11 @@
 DONE - Listen to words
 - Move head on up down left right, yes, no
 - Show words on screen
-- Say hello when person detected
-- Say words
 - Respond with yeah, uhuh, hm, ok, got it, alright
+- Say hello
+- Say words
+- Detect people
+- Say hello when person detected
 - Look over there move
 - Detect face expression
 - Recognize specific people
