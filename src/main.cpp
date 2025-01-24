@@ -28,7 +28,7 @@ int main(int argc, char ** argv) {
 
     // Create a thread for speech recognition
     std::thread speech_thread([argc, argv]() {
-        if (mainWhisper(argc, argv) != 0) exit(-1);
+        //if (mainWhisper(argc, argv) != 0) exit(-1);
     });
     speech_thread.detach();
 

@@ -24,11 +24,9 @@ public:
         }
     }
 
-
     bool configureCustomBaudRate(int serial_fd, int baud_rate) {
-        struct termios options;
-
         // Get current serial port settings
+        struct termios options;
         if (tcgetattr(serial_fd, &options) != 0) {
             std::cerr << "Failed to get serial port attributes: " << strerror(errno) << std::endl;
             return false;
@@ -57,7 +55,7 @@ public:
             return false;
         }
 
-#ifdef __linux__
+#ifdef __linux__NO
         // Custom baud rate configuration
         struct serial_struct serial;
         if (ioctl(serial_fd, TIOCGSERIAL, &serial) != 0) {
@@ -76,7 +74,7 @@ public:
             return false;
         }
 #else
-#warning Did not set baud rate!
+//#warning Did not set baud rate!
 #endif
         return true;
     }
@@ -90,7 +88,7 @@ public:
 
         int custom_baud_rate = 1000000;
         if (configureCustomBaudRate(serial_fd, custom_baud_rate)) {
-            std::cout << "Serial port configured successfully with baud rate: " << custom_baud_rate << std::endl;
+//            std::cout << "Serial port configured successfully with baud rate: " << custom_baud_rate << std::endl;
         } else {
             std::cerr << "Failed to configure serial port." << std::endl;
             close(serial_fd);

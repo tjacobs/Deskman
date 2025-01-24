@@ -5,9 +5,61 @@
 #include <string.h>
 #include <errno.h>
 #include <stdlib.h>
+#include <stdbool.h>
 
-#define SERIAL_PORT "/dev/ttyAMA0"
-#define BAUD_RATE 1000000
+#define SERIAL_PORT "/dev/ttyACM0"
+//#define BAUD_RATE 1000000
+#define BAUD_RATE 115200
+
+int configureSerialPort(int fd);
+
+int main() {
+    // Open
+    int serial_fd = open(SERIAL_PORT, O_RDWR | O_NOCTTY);
+    if (serial_fd == -1) {
+        perror("Failed to open serial port");
+        return 1;
+    }
+
+    // Configure
+    if (configureSerialPort(serial_fd) != 0) {
+        close(serial_fd);
+        return 1;
+    }
+
+    // Send and read
+    do {
+        // Send message
+        const char *test_message = "Hello there";
+        size_t message_length = strlen(test_message);
+        ssize_t bytes_written = write(serial_fd, test_message, message_length);
+        if (bytes_written < 0) {
+            perror("Failed to write to serial port");
+            close(serial_fd);
+            return 1;
+        }
+        printf("Wrote %zd bytes: %s\n", bytes_written, test_message);
+
+        // Read message
+        char buffer[256];
+        memset(buffer, 0, sizeof(buffer));
+        printf("Waiting for response...\n");
+        ssize_t bytes_read;
+        bytes_read = read(serial_fd, buffer, sizeof(buffer) - 1);
+        if (bytes_read < 0 && errno != EAGAIN) {
+            perror("Failed to read from serial port");
+            close(serial_fd);
+            return 1;
+        }
+        usleep(100000);
+        printf("Read %zd bytes: %s\n", bytes_read, buffer);    
+    } while (true);
+
+    // Done
+    close(serial_fd);
+    return 0;
+}
+
 
 int configureSerialPort(int fd) {
     struct termios options;
@@ -50,49 +102,3 @@ int configureSerialPort(int fd) {
     return 0;
 }
 
-int main() {
-    int serial_fd = open(SERIAL_PORT, O_RDWR | O_NOCTTY);
-    if (serial_fd == -1) {
-        perror("Failed to open serial port");
-        return 1;
-    }
-
-    if (configureSerialPort(serial_fd) != 0) {
-        close(serial_fd);
-        return 1;
-    }
-
-    const char *test_message = "Hello, Raspberry Pi!";
-    size_t message_length = strlen(test_message);
-
-    // Write data to the serial port
-    ssize_t bytes_written = write(serial_fd, test_message, message_length);
-    if (bytes_written < 0) {
-        perror("Failed to write to serial port");
-        close(serial_fd);
-        return 1;
-    }
-
-    printf("Written %zd bytes: %s\n", bytes_written, test_message);
-
-    // Wait for data to be available and read it
-    char buffer[256];
-    memset(buffer, 0, sizeof(buffer));
-
-    printf("Waiting for response...\n");
-
-    ssize_t bytes_read;
-    do {
-        bytes_read = read(serial_fd, buffer, sizeof(buffer) - 1);
-        if (bytes_read < 0 && errno != EAGAIN) {
-            perror("Failed to read from serial port");
-            close(serial_fd);
-            return 1;
-        }
-    } while (bytes_read <= 0); // Retry if no data is available yet
-
-    printf("Read %zd bytes: %s\n", bytes_read, buffer);
-
-    close(serial_fd);
-    return 0;
-}

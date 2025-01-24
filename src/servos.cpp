@@ -16,7 +16,10 @@ int open_servos() {
 
 void move_servos(int x, int y) {
     // Check if open
-    if (!st.pSerial) return;
+    if (!st.pSerial) {
+		printf("Not moving\n");
+		return;
+	 }
 
     // Limit
     int min_x = 0;
@@ -31,4 +34,7 @@ void move_servos(int x, int y) {
     // Move
 	st.WritePosEx(1, x, 300, 10);
 	st.WritePosEx(2, y, 300, 10);
+	int p1 = st.ReadPos(1);
+	printf("Read: %d\n", p1);
+	printf("Wrote\n");
 }
