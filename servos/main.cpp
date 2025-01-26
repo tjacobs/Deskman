@@ -3,7 +3,7 @@
 
 int main() {
     // Open serial
-    std::string port_name = "/dev/ttyACM0";
+    std::string port_name = "/dev/ttyAMA0";
     SerialPort serial(port_name);
     if (!serial.openPort()) return 1;
     SMS_STS st;
@@ -14,8 +14,8 @@ int main() {
     int y = 1500;
     do {
         // Update
-        x += 20;
-        y += 10;
+        x += 2;
+        y += 1;
         if (x > 2000) x = 0;
         if (y > 1800) y = 1300;
 
@@ -24,8 +24,8 @@ int main() {
         st.WritePosEx(2, y, 300, 10);
     
         // Read
-        //int pos1 = st.ReadPos(1);
-        //printf("Pos1: %d  (x=%d)\n", pos1, x);
+        int pos1 = st.ReadPos(2);
+        printf("Pos2: %d  (x=%d)\n", pos1, x);
 
         // Read message
         //char buffer[256];

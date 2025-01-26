@@ -24,13 +24,21 @@ public:
         }
     }
 
-    bool configureCustomBaudRate(int serial_fd, int baud_rate) {
+    bool configurePort(int serial_fd, int baud_rate) {
         // Get current serial port settings
         struct termios options;
         if (tcgetattr(serial_fd, &options) != 0) {
             std::cerr << "Failed to get serial port attributes: " << strerror(errno) << std::endl;
             return false;
         }
+
+	// Set baud rate
+	if (baud_rate == 115200) {
+	    if (cfsetspeed(&options, B115200) != 0) {
+	        std::cerr << "Failed to set BAUD_RATE" << std::endl;
+                return -1;
+            }
+	}
 
         // Configure 8N1
         options.c_cflag &= ~PARENB;  // No parity
@@ -46,7 +54,7 @@ public:
 
         // Raw input/output mode
         options.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG);
-        options.c_iflag &= ~(IXON | IXOFF | IXANY); // Disable software flow control
+        options.c_iflag &= ~(IXON | IXOFF | IXANY); // Disable software flow
         options.c_oflag &= ~OPOST;
 
         // Apply the initial settings
@@ -86,9 +94,9 @@ public:
             return false;
         }
 
-        int custom_baud_rate = 1000000;
-        if (configureCustomBaudRate(serial_fd, custom_baud_rate)) {
-//            std::cout << "Serial port configured successfully with baud rate: " << custom_baud_rate << std::endl;
+        int baud_rate = 115200; 1000000;
+        if (configurePort(serial_fd, baud_rate)) {
+            std::cout << "Serial port configured successfully with baud rate: " << baud_rate << std::endl;
         } else {
             std::cerr << "Failed to configure serial port." << std::endl;
             close(serial_fd);
