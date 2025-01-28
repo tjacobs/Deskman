@@ -24,7 +24,7 @@ Face face;
 
 int main(int argc, char ** argv) {
     // Create window
-    create_window();
+    //create_window();
 
     // Connect to servos
     if (open_servos() != 0) printf("Could not open servos\n");
