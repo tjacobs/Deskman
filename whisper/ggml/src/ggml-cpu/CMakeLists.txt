@@ -40,7 +40,7 @@ if (GGML_OPENMP)
         #    list(APPEND GGML_CPU_EXTRA_LIBS_PRIVATE "/usr/lib/llvm-14/lib/libomp.so")
         #endif()
     else()
-        message(WARNING "OpenMP not found")
+#        message(WARNING "OpenMP not found")
     endif()
 endif()
 
