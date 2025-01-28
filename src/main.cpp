@@ -27,10 +27,10 @@ int main(int argc, char ** argv) {
     if (open_servos() != 0) printf("Could not open servos\n");
 
     // Create a thread for speech recognition
-    std::thread speech_thread([argc, argv]() {
+    std::thread speech_detection_thread([argc, argv]() {
         //if (mainWhisper(argc, argv) != 0) exit(-1);
     });
-    speech_thread.detach();
+    speech_detection_thread.detach();
 
     // Face rendering
     if (true) {
