@@ -12,6 +12,9 @@
 // Speech detection
 int mainWhisper(int argc, char ** argv);
 
+// Speech generation
+int mainBark(int argc, char **argv);
+
 // Window
 extern int screen_width;
 extern int screen_height;
@@ -31,6 +34,12 @@ int main(int argc, char ** argv) {
         //if (mainWhisper(argc, argv) != 0) exit(-1);
     });
     speech_detection_thread.detach();
+
+    // Create a thread for speech generation
+    std::thread speech_generation_thread([argc, argv]() {
+        if (mainBark(argc, argv) != 0) exit(-1);
+    });
+    speech_generation_thread.detach();
 
     // Face rendering
     if (true) {
