@@ -48,7 +48,7 @@ def on_open(ws):
     event = {
         "type": "response.create",
         "response": {
-            "modalities": [ "text" ]
+            "modalities": [ "audio", "text" ]
         }
     }
     ws.send(json.dumps(event))
@@ -63,13 +63,18 @@ def on_message(ws, message):
 #    if server_event['type'] == "response.text.delta":
 #        print(server_event['delta'], end='')
 
+    if server_event['type'] == "error":
+        print("*******")
+        print(server_event['error']['message'])
+        print("*******")
+
     if server_event['type'] == "response.done":
         print("")
         print(server_event['response']['output'][0]['content'][0]['text'])
 
     if server_event['type'] == "response.audio.delta":
         # Access Base64-encoded audio chunks:
-        print("Audio size:")
+        print("Audio size: ", end='')
         print(len(server_event['delta']))
 
 
