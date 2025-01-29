@@ -4,6 +4,8 @@ import websocket
 import base64
 import sounddevice as sd
 import numpy as np
+from queue import Queue
+from threading import Thread
 
 # Keys
 # export OPENAI_API_KEY="sk-"
@@ -15,6 +17,33 @@ headers = [
     "Authorization: Bearer " + OPENAI_API_KEY,
     "OpenAI-Beta: realtime=v1"
 ]
+
+# Audio buffer queue and playback state
+audio_queue = Queue()
+is_playing = False
+
+def audio_player():
+    global is_playing
+    is_playing = True
+    
+    while is_playing:
+        # Collect chunks until we have some audio
+        chunks = []
+        total_samples = 0
+        while total_samples < 24000:  # Buffer ~1 second of audio
+            try:
+                chunk = audio_queue.get(timeout=0.1)
+                chunks.append(chunk)
+                total_samples += len(chunk)
+            except:
+                if chunks:  # Play what we have if queue is empty
+                    break
+                continue
+        if chunks:
+            # Concatenate chunks and play
+            audio_data = np.concatenate(chunks)
+            sd.play(audio_data, samplerate=24000)
+            sd.wait()
 
 # Afer opening, send messages
 def on_open(ws):
@@ -82,9 +111,13 @@ def on_message(ws, message):
         # Convert bytes to numpy array
         audio_array = np.frombuffer(audio_bytes, dtype=np.int16)
         
-        # Play the audio chunk
-        sd.play(audio_array, samplerate=24000)
-        sd.wait()
+        # Add to queue instead of playing directly
+        audio_queue.put(audio_array)
+        
+        # Start player thread if not already running
+        global is_playing
+        if not is_playing:
+            Thread(target=audio_player, daemon=True).start()
 
 
 # Connect
