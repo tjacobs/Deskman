@@ -1,6 +1,9 @@
 import os
 import json
 import websocket
+import base64
+import sounddevice as sd
+import numpy as np
 
 # Keys
 # export OPENAI_API_KEY="sk-"
@@ -60,8 +63,8 @@ def on_message(ws, message):
 
 #    print("Received event:", json.dumps(server_event, indent=2))
 
-#    if server_event['type'] == "response.text.delta":
-#        print(server_event['delta'], end='')
+    if server_event['type'] == "response.text.delta":
+        print(server_event['delta'], end='')
 
     if server_event['type'] == "error":
         print("*******")
@@ -69,13 +72,19 @@ def on_message(ws, message):
         print("*******")
 
     if server_event['type'] == "response.done":
-        print("")
-        print(server_event['response']['output'][0]['content'][0]['text'])
+        print("Response: ")
+        print(server_event['response']['output'][0]['content'][0]['transcript'])
 
     if server_event['type'] == "response.audio.delta":
-        # Access Base64-encoded audio chunks:
-        print("Audio size: ", end='')
-        print(len(server_event['delta']))
+        # Decode base64 audio data
+        audio_bytes = base64.b64decode(server_event['delta'])
+        
+        # Convert bytes to numpy array
+        audio_array = np.frombuffer(audio_bytes, dtype=np.int16)
+        
+        # Play the audio chunk
+        sd.play(audio_array, samplerate=24000)
+        sd.wait()
 
 
 # Connect
