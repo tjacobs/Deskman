@@ -3,6 +3,7 @@ import json
 import websocket
 
 # Keys
+# export OPENAI_API_KEY="sk-"
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 
 # OpenAI realitime model API endpoint
@@ -23,6 +24,7 @@ def on_open(ws):
             "instructions": "Never use the word 'dog' in your responses!"
         }
     }
+    print(event['session']['instructions'])
     ws.send(json.dumps(event))
 
     # Ask a question
@@ -39,6 +41,7 @@ def on_open(ws):
             ]
         }
     }
+    print(event['item']['content'][0]['text'])
     ws.send(json.dumps(event))
 
     # Ask it to respond
@@ -53,8 +56,22 @@ def on_open(ws):
 
 # Receive messages
 def on_message(ws, message):
-    data = json.loads(message)
-    print("Received event:", json.dumps(data, indent=2))
+    server_event = json.loads(message)
+
+#    print("Received event:", json.dumps(server_event, indent=2))
+
+#    if server_event['type'] == "response.text.delta":
+#        print(server_event['delta'], end='')
+
+    if server_event['type'] == "response.done":
+        print("")
+        print(server_event['response']['output'][0]['content'][0]['text'])
+
+    if server_event['type'] == "response.audio.delta":
+        # Access Base64-encoded audio chunks:
+        print("Audio size:")
+        print(len(server_event['delta']))
+
 
 # Connect
 ws = websocket.WebSocketApp(
