@@ -1,4 +1,4 @@
-// Main program for Teleport robot control.
+// Main program for robot control.
 // Thomas Jacobs, 2025.
 
 #include "image.h"
@@ -24,7 +24,7 @@ Face face;
 
 int main(int argc, char ** argv) {
     // Create window
-    //create_window();
+    create_window();
 
     // Connect to servos
     if (open_servos() != 0) printf("Could not open servos\n");
@@ -37,7 +37,7 @@ int main(int argc, char ** argv) {
 
     // Create a thread for speech generation
     std::thread speech_generation_thread([argc, argv]() {
-        if (mainBark(argc, argv) != 0) exit(-1);
+        //if (mainBark(argc, argv) != 0) exit(-1);
     });
     speech_generation_thread.detach();
 
