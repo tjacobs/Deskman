@@ -25,6 +25,7 @@ SDL_Renderer* renderer = NULL;
 SDL_Surface* image = NULL;
 SDL_Texture* texture = NULL;
 
+// Screen size
 int screen_width;
 int screen_height;
 
@@ -64,27 +65,20 @@ bool create_window() {
         SDL_DestroyWindow(window);
         IMG_Quit();
         SDL_Quit();
-        return false;
+        return -1;
     }
 
-    // Show window
-    SDL_Event event;
-    bool quit = false;
-        while (SDL_PollEvent(&event) != 0) {
-            if (event.type == SDL_QUIT || (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE)) {
-                quit = true;
-            }
-        }
+    // Clear renderer
+    SDL_SetRenderDrawColor(renderer, 200, 200, 200, 200);
+    SDL_RenderClear(renderer);
 
-        // Clear renderer
-        SDL_SetRenderDrawColor(renderer, 200, 200, 200, 200);
-        SDL_RenderClear(renderer);
+    // Present renderer
+    SDL_RenderPresent(renderer);
 
-        // Present renderer
-        SDL_RenderPresent(renderer);
+    // Sleep
+    SDL_Delay(16);
 
-        SDL_Delay(16); // Limit frame rate
-    return true;
+    return 0;
 }
 
 bool create_image(const char* prompt) {
@@ -132,10 +126,6 @@ bool show_image(const char* image_file) {
         SDL_FreeSurface(image);
         return false;
     }
-
-    // Event handling variables
-    SDL_Event event;
-    bool quit = false;
 
     // Clear renderer
     SDL_SetRenderDrawColor(renderer, 200, 200, 200, 200);

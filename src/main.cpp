@@ -24,7 +24,7 @@ Face face;
 
 int main(int argc, char ** argv) {
     // Create window
-    create_window();
+    if (create_window() != 0) printf("Could not create window\n");
 
     // Connect to servos
     if (open_servos() != 0) printf("Could not open servos\n");
@@ -66,7 +66,6 @@ int main(int argc, char ** argv) {
                     if (event.key.keysym.sym == SDLK_l)     { move_head(-900, 0); update_face(&face, -5, 0); }
                     if (event.key.keysym.sym == SDLK_i)     { move_head(0, 200); update_face(&face, 5, 0); }
                     if (event.key.keysym.sym == SDLK_k)     { move_head(0, -200); update_face(&face, -5, 0); }
-
                 }
             }
 
