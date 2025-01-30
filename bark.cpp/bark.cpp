@@ -175,9 +175,9 @@ static void write_safe(std::ofstream& fout, T& dest) {
 
 static void bark_print_statistics(gpt_model* model) {
     printf("\n\n");
-    printf("%s:   sample time = %8.2f ms / %lld tokens\n", __func__, model->t_sample_us / 1000.0f, model->n_sample);
-    printf("%s:  predict time = %8.2f ms / %.2f ms per token\n", __func__, model->t_predict_us / 1000.0f, model->t_predict_us / model->n_sample / 1000.0f);
-    printf("%s:    total time = %8.2f ms\n", __func__, model->t_main_us / 1000.0f);
+//    printf("%s:   sample time = %8.2f ms / %lld tokens\n", __func__, model->t_sample_us / 1000.0f, model->n_sample);
+//    printf("%s:  predict time = %8.2f ms / %.2f ms per token\n", __func__, model->t_predict_us / 1000.0f, model->t_predict_us / model->n_sample / 1000.0f);
+    printf("%s:    time = %8.2f S\n", __func__, model->t_main_us / 1000.0f / 1000.0f);
     printf("\n");
 }
 
@@ -654,9 +654,9 @@ static void bark_tokenize_input(struct bark_context* bctx, const std::string& te
     bctx->tokens = tokens;
 
     printf("%s: prompt: '%s'\n", __func__, text.c_str());
-    printf("%s: number of tokens in prompt = %zu, first 8 tokens: ", __func__, bctx->tokens.size());
+//    printf("%s: number of tokens in prompt = %zu, first 8 tokens: ", __func__, bctx->tokens.size());
     for (int i = 0; i < std::min(8, (int)bctx->tokens.size()); i++) {
-        printf("%d ", bctx->tokens[i]);
+//        printf("%d ", bctx->tokens[i]);
     }
     printf("\n\n");
 }

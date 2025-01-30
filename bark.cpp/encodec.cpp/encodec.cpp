@@ -143,8 +143,8 @@ bool encodec_load_model_weights(std::ifstream &infile, encodec_model &model, int
     {
         uint32_t magic;
         read_safe(infile, magic);
-        if (magic != ENCODEC_FILE_MAGIC) {
-            fprintf(stderr, "%s: invalid model file (bad magic)\n", __func__);
+        if (magic != 1734831468) { //(uint32_t)ENCODEC_FILE_MAGIC) {
+            fprintf(stderr, "%s: invalid model file (bad magic %d)\n", __func__, magic);
             return false;
         }
     }
@@ -634,7 +634,6 @@ void encodec_build_graph(struct encodec_context *ectx, const int32_t *codes,
     const auto & model   = ectx->model;
     const auto & hparams = model.hparams;
     const auto & allocr  = ectx->allocr;
-
     auto & gf = ectx->gf;
 
     const int n_bins        = hparams.n_bins;
@@ -781,7 +780,9 @@ bool encodec_eval_internal(struct encodec_context *ectx, const int32_t *codes,
         ggml_backend_cpu_set_n_threads(model.backend, n_threads);
     }
 
+    printf("Computing...\n");
     ggml_backend_graph_compute(model.backend, gf.get());
+    printf("Done computing.\n");
 
     return true;
 }
@@ -802,7 +803,7 @@ bool encodec_eval(struct encodec_context *ectx, const float *raw_audio,
         // pre-allocate the compute buffer
         ggml_gallocr_reserve(ectx->allocr, ectx->gf.get());
         size_t mem_size = ggml_gallocr_get_buffer_size(ectx->allocr, 0);
-        fprintf(stderr, "%s: compute buffer size: %.2f MB\n\n", __func__, mem_size / 1024.0 / 1024.0);
+        fprintf(stderr, "%s: compute buffer size is totally: %.2f MB\n\n", __func__, mem_size / 1024.0 / 1024.0);
     }
 
     // encodec eval
@@ -832,14 +833,16 @@ bool encodec_eval(struct encodec_context *ectx, const int32_t *codes,
         // pre-allocate the compute buffer
         ggml_gallocr_reserve(ectx->allocr, ectx->gf.get());
         size_t mem_size = ggml_gallocr_get_buffer_size(ectx->allocr, 0);
-        fprintf(stderr, "%s: compute buffer size: %.2f MB\n\n", __func__, mem_size / 1024.0 / 1024.0);
+        fprintf(stderr, "%s: compute buffer size is totally...: %.2f MB\n\n", __func__, mem_size / 1024.0 / 1024.0);
     }
 
     // encodec eval
+    fprintf(stderr, "going in for the eval\n");
     if (!encodec_eval_internal(ectx, codes, n_codes, n_threads, mode)) {
         fprintf(stderr, "%s: failed to run encodec eval\n", __func__);
         return false;
     }
+    fprintf(stderr, "done for the eval\n");
 
     ectx->stats.t_compute_us = ggml_time_us() - t_start_ms;
 
