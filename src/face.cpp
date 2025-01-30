@@ -8,8 +8,8 @@ void move_face(int smile) {
     update_face(&face, 0, smile);
 }
 
-int head_x = 100;
-int head_y = 1700;
+int head_x = 950;
+int head_y = 1680;
 
 void move_head(int x, int y) {
     // Move the head
