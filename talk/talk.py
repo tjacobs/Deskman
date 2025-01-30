@@ -53,7 +53,7 @@ def on_open(ws):
     event = {
         "type": "session.update",
         "session": {
-            "instructions": "Never use the word 'dog' in your responses!"
+            "instructions": "Talk like a nice person!"
         }
     }
     print(event['session']['instructions'])
@@ -68,7 +68,7 @@ def on_open(ws):
             "content": [
                 {
                     "type": "input_text",
-                    "text": "What animal goes woof?",
+                    "text": "What animal goes meow?",
                 }
             ]
         }
