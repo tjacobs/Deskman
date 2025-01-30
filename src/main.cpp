@@ -57,10 +57,16 @@ int main(int argc, char ** argv) {
 
                 // Adjust face with keys
                 if (event.type == SDL_KEYDOWN) {
-                    if (event.key.keysym.sym == SDLK_UP)    { move_head(0, 10); update_face(&face, 0, 1); }
-                    if (event.key.keysym.sym == SDLK_DOWN)  { move_head(0, -10); update_face(&face, 0, -1); }
-                    if (event.key.keysym.sym == SDLK_RIGHT) { move_head(10, 0); }
-                    if (event.key.keysym.sym == SDLK_LEFT)  { move_head(-10, 0); }
+                    if (event.key.keysym.sym == SDLK_UP)    { move_head(0, 40); update_face(&face, 0, 1); }
+                    if (event.key.keysym.sym == SDLK_DOWN)  { move_head(0, -40); update_face(&face, 0, -1); }
+                    if (event.key.keysym.sym == SDLK_RIGHT) { move_head(-40, 0); }
+                    if (event.key.keysym.sym == SDLK_LEFT)  { move_head(40, 0); }
+                    if (event.key.keysym.sym == SDLK_SPACE) { move_head(0, -500); update_face(&face, 5, 0); }
+                    if (event.key.keysym.sym == SDLK_j)     { move_head(900, 0); update_face(&face, 5, 0); }
+                    if (event.key.keysym.sym == SDLK_l)     { move_head(-900, 0); update_face(&face, -5, 0); }
+                    if (event.key.keysym.sym == SDLK_i)     { move_head(0, 200); update_face(&face, 5, 0); }
+                    if (event.key.keysym.sym == SDLK_k)     { move_head(0, -200); update_face(&face, -5, 0); }
+
                 }
             }
 

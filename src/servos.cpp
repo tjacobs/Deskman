@@ -32,8 +32,8 @@ void move_servos(int &x, int &y) {
     if (y > max_y) y = max_y;
 
     // Move
-    st.WritePosEx(1, x, 800, 10);
-    st.WritePosEx(2, y, 800, 10);
+    st.WritePosEx(1, x, 1800, 20);
+    st.WritePosEx(2, y, 1800, 20);
     int p1 = st.ReadPos(1);
     //printf("Position: %d\n", p1);
 }
