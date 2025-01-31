@@ -5,6 +5,7 @@ import os
 import ssl
 import time
 import json
+import queue
 import base64
 import struct
 import dotenv
@@ -47,7 +48,8 @@ logger = logging.getLogger(__name__)
 class AudioHandler:
     def __init__(self):
         self.p = pyaudio.PyAudio()
-        self.stream = None
+        self.stream_in = None
+        self.stream_out = None
         self.audio_buffer = b''
         self.chunk_size = 512
         self.format = pyaudio.paInt16
@@ -55,17 +57,29 @@ class AudioHandler:
         self.rate = 24000
         self.is_recording = False
 
+        # For output buffering:
+        self.play_queue = queue.Queue()
+        self.playback_thread = None
+        self.playback_running = False
+
     def start_audio_stream(self):
-        self.stream = self.p.open(format=self.format, channels=self.channels, rate=self.rate, input=True, frames_per_buffer=self.chunk_size)
+        self.stream_in = self.p.open(
+            format=self.format,
+            channels=self.channels,
+            rate=self.rate,
+            input=True,
+            frames_per_buffer=self.chunk_size
+        )
 
     def stop_audio_stream(self):
-        if self.stream:
-            self.stream.stop_stream()
-            self.stream.close()
+        if self.stream_in:
+            self.stream_in.stop_stream()
+            self.stream_in.close()
+            self.stream_in = None
 
     def cleanup(self):
-        if self.stream:
-            self.stop_audio_stream()
+        self.stop_audio_stream()
+        self.stop_playback()
         self.p.terminate()
 
     def start_recording(self):
@@ -79,21 +93,59 @@ class AudioHandler:
         return self.audio_buffer
 
     def record_chunk(self):
-        if self.stream and self.is_recording:
-            data = self.stream.read(self.chunk_size)
+        if self.stream_in and self.is_recording:
+            data = self.stream_in.read(self.chunk_size)
             self.audio_buffer += data
             return data
         return None
-    
-    def play_audio(self, audio_data):
-        def play():
-            stream = self.p.open(format=self.format, channels=self.channels, rate=self.rate, output=True)
-            stream.write(audio_data)
-            stream.stop_stream()
-            stream.close()
 
-        playback_thread = threading.Thread(target=play)
-        playback_thread.start()
+    # -- Continuous Playback Logic Below --
+    def start_playback(self):
+        """Open one output stream and start a playback thread reading from the queue."""
+        if self.stream_out is None:
+            self.stream_out = self.p.open(
+                format=self.format,
+                channels=self.channels,
+                rate=self.rate,
+                output=True
+            )
+        if not self.playback_running:
+            self.playback_running = True
+            self.playback_thread = threading.Thread(target=self._play_loop, daemon=True)
+            self.playback_thread.start()
+
+    def stop_playback(self):
+        """Signal the playback thread to exit and close the stream."""
+        self.playback_running = False
+        # Send a sentinel (None) to unblock queue.get()
+        self.play_queue.put(None)
+
+        # Wait for the thread to finish
+        if self.playback_thread is not None:
+            self.playback_thread.join()
+            self.playback_thread = None
+
+        # Close the output stream
+        if self.stream_out is not None:
+            self.stream_out.stop_stream()
+            self.stream_out.close()
+            self.stream_out = None
+
+    def _play_loop(self):
+        """Continuously read from play_queue and write to the single output stream."""
+        while self.playback_running:
+            audio_data = self.play_queue.get()
+            if audio_data is None:
+                # Sentinel value -> quit
+                break
+            self.stream_out.write(audio_data)
+        # End of playback loop
+
+    def queue_audio(self, audio_data: bytes):
+        """Public method to enqueue new audio data for playback."""
+        if not self.playback_running:
+            self.start_playback()
+        self.play_queue.put(audio_data)
 
 # Realtime client for OpenAI API
 class RealtimeClient:
@@ -164,11 +216,12 @@ class RealtimeClient:
         elif event_type == "response.audio.delta":
             audio_data = base64.b64decode(event["delta"])
             logger.debug("Got audio: " + str(len(audio_data)))
-            self.audio_handler.play_audio(audio_data)
+            self.audio_handler.queue_audio(audio_data)
         elif event_type == "response.done":
             logger.debug("Response generation completed")
         elif event_type == "session.created":
             logger.debug("Session created")
+            self.audio_handler.start_playback()
         else:
             logger.info(f"Event: {event_type}")
 
