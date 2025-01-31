@@ -21,13 +21,13 @@ VOICE2 = "alloy"
 MODEL = "gpt-4o-realtime-preview-2024-10-01" 
 #MODEL = "gpt-4o-mini-realtime-preview-2024-12-17"
 
-# Constants
+# Prompt
 INSTRUCTIONS = f"""
-You are Rob, a kind and friendly home assistant.
+You are Deskman, a friendly home assistance robot, with a physical appearance of a head and shoulders on a desk.
 """
 
 # Wake word
-KEYWORDS = ['hey siri']
+KEYWORDS = ['computer']
 
 # Keys
 dotenv.load_dotenv("keys.sh")
@@ -134,8 +134,11 @@ class RealtimeClient:
         self.ws = await websockets.connect(f"{self.url}?model={self.model}", additional_headers=headers, ssl=self.ssl_context) # or extra_headers= in pre 14.0 websockets, see https://websockets.readthedocs.io/en/latest/howto/upgrade.html#extra-headers-additional-headers and https://websockets.readthedocs.io/en/stable/project/changelog.html#id7
         logger.info("Successfully connected to OpenAI Realtime API")
         await self.send_event({"type": "session.update", "session": self.session_config})
-        await self.send_event({"type": "response.create"})
-        logger.debug("Sent response.create to initiate conversation")
+
+        # Test asking for a response
+        if False:
+            await self.send_event({"type": "response.create"})
+            logger.debug("Sent response.create to initiate conversation")
 
     async def send_event(self, event):
         await self.ws.send(json.dumps(event))
@@ -154,40 +157,24 @@ class RealtimeClient:
 
     async def handle_event(self, event):
         event_type = event.get("type")
-        if event_type == "response.text.delta":
+        if event_type == "response.audio_transcript.delta":
             print(event["delta"], end="", flush=True)
+        elif event_type == "response.audio.done":
+            print("")
         elif event_type == "response.audio.delta":
             audio_data = base64.b64decode(event["delta"])
+            logger.debug("Got audio: " + str(len(audio_data)))
             self.audio_handler.play_audio(audio_data)
         elif event_type == "response.done":
             logger.debug("Response generation completed")
         elif event_type == "session.created":
             logger.debug("Session created")
         else:
-            logger.debug(f"Unhandled event type: {event_type}")
-
-    async def send_audio(self):
-        logger.debug("Sending audio")
-        self.audio_handler.start_recording()
-        try:
-            while True:
-                chunk = self.audio_handler.record_chunk()
-                if chunk:
-                    base64_chunk = base64.b64encode(chunk).decode('utf-8')
-                    await self.send_event({"type": "input_audio_buffer.append", "audio": base64_chunk})
-                    await asyncio.sleep(0.01)
-                else:
-                    break
-        except Exception as e:
-            logger.error(f"Error during audio recording: {e}")
-        finally:
-            self.audio_handler.stop_recording()
+            logger.info(f"Event: {event_type}")
 
     async def run(self):
         await self.connect()
-        receive_task = asyncio.create_task(self.receive_events())
-        await self.send_audio()
-        receive_task.cancel()
+        asyncio.create_task(self.receive_events())
 
     async def cleanup(self):
         self.audio_handler.cleanup()
@@ -211,13 +198,14 @@ class PorcupineWakeword:
                 audio_data = self.stream.read(self.porcupine.frame_length)
                 audio_data = struct.unpack_from("h" * self.porcupine.frame_length, audio_data)
                 result = self.porcupine.process(audio_data)
-                if True or result >= 0:  # Wake word detected
-                    logging.info("Wake word detected!")
+                if False or result >= 0:  # Wake word detected
+                    print("Wake word detected")
                     self.stop_listening()
                     if self.callback:
                         await self.callback()
         except Exception as e:
             logger.error(f"Error during wake word detection: {e}")
+        print("Done listening for wake word")
 
     def stop_listening(self):
         self.is_listening = False
@@ -229,44 +217,62 @@ class PorcupineWakeword:
 class VoiceAssistant:
     def __init__(self, instructions, voice=VOICE):
         self.realtime_client = RealtimeClient(instructions, voice)
-        self.wakeword_detector = PorcupineWakeword(callback=self.start_conversation)
-        self.conversation_active = False
+        self.wakeword_detector = PorcupineWakeword() #callback=self.start_conversation)
+        self.listening_active = False
 
     async def start_conversation(self):
         print("Starting conversation...")
-        # Connect to OpenAI
+
+        # Connect to OpenAI realtime API
         await self.realtime_client.run()
 
-        asyncio.create_task(self.realtime_client.receive_events())
-        self.conversation_active = True
-        print("Receiving events...")
+        # Loop
+        self.listening_active = True
+        self.realtime_client.audio_handler.start_recording()
         try:
-            while self.conversation_active:
-                # Get chunk of audio
-                audio_chunk = self.realtime_client.audio_handler.record_chunk()
-                if audio_chunk:
-                    # Send to OpenAI realtime client
-                    base64_chunk = base64.b64encode(audio_chunk).decode('utf-8')
-                    await self.realtime_client.send_event({
-                        "type": "input_audio_buffer.append",
-                        "audio": base64_chunk
-                    })
-
-                    # Sleep
-                    await asyncio.sleep(0.1)
+#            while self.listening_active:
+            for i in range(100):
+                # Get audio chunk
+                chunk = self.realtime_client.audio_handler.record_chunk()
+                if chunk:
+                    # Send audio chunk
+                    print("Sending audio: " + str(i))
+                    base64_chunk = base64.b64encode(chunk).decode('utf-8')
+                    await self.realtime_client.send_event({"type": "input_audio_buffer.append", "audio": base64_chunk})
+                else:
+                    break
         except Exception as e:
-            logger.error(f"Error during conversation: {e}")
+            logger.error(f"Error during audio recording: {e}")
         finally:
-            await self.end_conversation()
+            self.realtime_client.audio_handler.stop_recording()
+
+        # Ask for response
+        await self.realtime_client.send_event({"type": "response.create"})
+        print("Sent response.create to ask for a response")
+
+        # Sleep
+#        while True:
+        await asyncio.sleep(5)
+#        except Exception as e:
+#            logger.error(f"Error during conversation: {e}")
+#        finally:
+#            await self.end_conversation()
+
+#        try:
+#            await self.wakeword_detector.start_listening()
+#        except:
+#            print("Done")
+
 
     async def end_conversation(self):
         logger.info("Ending conversation...")
-        self.conversation_active = False
+        self.listening_active = False
         await self.realtime_client.cleanup()
 
     async def run(self):
         try:
             await self.wakeword_detector.start_listening()
+            await self.start_conversation()
         except:
             print("Done")
 
