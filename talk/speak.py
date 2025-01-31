@@ -212,9 +212,7 @@ class RealtimeClient:
         if event_type == "response.audio_transcript.delta":
             print(event["delta"], end="", flush=True)
         elif event_type == "response.audio.done":
-            print("")
-        elif event_type == "conversation.item.input_audio_transcription.completed":
-            print("")
+            print("")            
         elif event_type == "response.audio.delta":
             audio_data = base64.b64decode(event["delta"])
             logger.debug("Got audio: " + str(len(audio_data)))
@@ -226,6 +224,8 @@ class RealtimeClient:
             self.audio_handler.start_playback()
         elif event_type == "error":
             logger.info(event)
+        elif event_type == "conversation.item.input_audio_transcription.completed":
+            logger.debug(f"Event: {event_type}")
         else:
             logger.info(f"Event: {event_type}")
 
@@ -244,9 +244,9 @@ class PorcupineWakeword:
         self.callback = callback
         self.porcupine = pvporcupine.create(access_key=PICOVOICE_KEY, keywords=keywords, sensitivities=[sensitivity])
         self.pyaudio_instance = pyaudio.PyAudio()
-        self.stream = self.pyaudio_instance.open(format=pyaudio.paInt16, channels=1, rate=self.porcupine.sample_rate, input=True, frames_per_buffer=self.porcupine.frame_length)
 
     async def start_listening(self):
+        self.stream = self.pyaudio_instance.open(format=pyaudio.paInt16, channels=1, rate=self.porcupine.sample_rate, input=True, frames_per_buffer=self.porcupine.frame_length)
         print("Listening for wake word...")
         self.is_listening = True
         try:
@@ -268,7 +268,7 @@ class PorcupineWakeword:
         self.is_listening = False
         self.stream.stop_stream()
         self.stream.close()
-        self.pyaudio_instance.terminate()
+#        self.pyaudio_instance.terminate()
 
 # Voice assistant with wake word detection
 class VoiceAssistant:
@@ -299,6 +299,7 @@ class VoiceAssistant:
         except Exception as e:
             logger.error(f"Error during audio recording: {e}")
         finally:
+            print("Stopped recording")
             self.realtime_client.audio_handler.stop_recording()
 
         # Done sending audio chunks
@@ -312,19 +313,21 @@ class VoiceAssistant:
         # Sleep
         await asyncio.sleep(10)
 
-    async def end_conversation(self):
-        logger.info("Ending conversation...")
-        self.listening_active = False
-        await self.realtime_client.cleanup()
+#    async def end_conversation(self):
+#        logger.info("Ending conversation...")
+#        self.listening_active = False
+#        await self.realtime_client.cleanup()
 
     async def run(self):
         self.listening_active = True
         while self.listening_active:
             try:
                 # Listen for wake word
+                print("***Listening for wake word")
                 await self.wakeword_detector.start_listening()
 
                 # Listen for command and respond
+                print("***Starting conversation")
                 await self.start_conversation()
             except Exception as e:
                 logger.error(f"Done: {e}")
