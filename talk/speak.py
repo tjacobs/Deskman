@@ -15,6 +15,20 @@ import threading
 import websockets
 import pvporcupine
 
+# Voice
+VOICE = "ash"
+VOICE2 = "alloy"
+MODEL = "gpt-4o-realtime-preview-2024-10-01" 
+#MODEL = "gpt-4o-mini-realtime-preview-2024-12-17"
+
+# Constants
+INSTRUCTIONS = f"""
+You are Rob, a kind and friendly home assistant.
+"""
+
+# Wake word
+KEYWORDS = ['hey siri']
+
 # Keys
 dotenv.load_dotenv("keys.sh")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
@@ -24,14 +38,6 @@ PICOVOICE_KEY = os.environ.get("PICOVOICE_KEY")
 if PICOVOICE_KEY is None:
     print("Check that your keys.sh file has export PICOVOICE_KEY=key in it")
     exit()
-
-# Wake word
-KEYWORDS = ['hey siri']
-
-# Constants
-INSTRUCTIONS = f"""
-You are Rob, a kind and friendly home assistant.
-"""
 
 # Logger setup
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -91,10 +97,9 @@ class AudioHandler:
 
 # Realtime client for OpenAI API
 class RealtimeClient:
-    def __init__(self, instructions, voice="alloy"):
+    def __init__(self, instructions, voice=VOICE2):
         self.url = "wss://api.openai.com/v1/realtime"
-        #self.model = "gpt-4o-mini-realtime-preview-2024-12-17"
-        self.model = "gpt-4o-realtime-preview-2024-10-01"
+        self.model = MODEL
         self.api_key = OPENAI_API_KEY
         self.ws = None
         self.audio_handler = AudioHandler()
@@ -185,9 +190,6 @@ class RealtimeClient:
         receive_task.cancel()
 
     async def cleanup(self):
-        """
-        Clean up resources by closing the WebSocket and audio handler.
-        """
         self.audio_handler.cleanup()
         if self.ws:
             await self.ws.close()
@@ -201,7 +203,7 @@ class PorcupineWakeword:
         self.stream = self.pyaudio_instance.open(format=pyaudio.paInt16, channels=1, rate=self.porcupine.sample_rate, input=True, frames_per_buffer=self.porcupine.frame_length)
 
     async def start_listening(self):
-        logger.info("Listening for wakeword...")
+        print("Listening for wake word...")
         self.is_listening = True
         try:
             while self.is_listening:
@@ -209,14 +211,13 @@ class PorcupineWakeword:
                 audio_data = self.stream.read(self.porcupine.frame_length)
                 audio_data = struct.unpack_from("h" * self.porcupine.frame_length, audio_data)
                 result = self.porcupine.process(audio_data)
-                #if result >= 0:  # Wake word detected
-                if True:
+                if result >= 0:  # Wake word detected
                     logging.info("Wake word detected!")
                     self.stop_listening()
                     if self.callback:
                         await self.callback()
         except Exception as e:
-            logger.error(f"Error during wakeword detection: {e}")
+            logger.error(f"Error during wake word detection: {e}")
 
     def stop_listening(self):
         self.is_listening = False
@@ -226,25 +227,31 @@ class PorcupineWakeword:
 
 # Voice assistant with wakeword detection
 class VoiceAssistant:
-    def __init__(self, instructions, voice="ash"):
+    def __init__(self, instructions, voice=VOICE):
         self.realtime_client = RealtimeClient(instructions, voice)
         self.wakeword_detector = PorcupineWakeword(callback=self.start_conversation)
         self.conversation_active = False
 
     async def start_conversation(self):
         logger.info("Starting conversation...")
+
+        # Connect to OpenAI
         await self.realtime_client.connect()
         asyncio.create_task(self.realtime_client.receive_events())
-
+        self.conversation_active = True
         try:
             while self.conversation_active:
+                # Get chunk of audio
                 audio_chunk = self.realtime_client.audio_handler.record_chunk()
                 if audio_chunk:
+                    # Send to OpenAI realtime client
                     base64_chunk = base64.b64encode(audio_chunk).decode('utf-8')
                     await self.realtime_client.send_event({
                         "type": "input_audio_buffer.append",
                         "audio": base64_chunk
                     })
+
+                    # Sleep
                     await asyncio.sleep(0.1)
         except Exception as e:
             logger.error(f"Error during conversation: {e}")
