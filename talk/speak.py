@@ -1,6 +1,7 @@
-# Requirements:
-# pip install pvporcupine
+# Voice conversations for the Deskman robot.
+# Using OpenAI realtime API and Picovoice porcupine for wake word detection.
 
+# Imports
 import os
 import ssl
 import time
@@ -24,7 +25,7 @@ MODEL = "gpt-4o-realtime-preview-2024-10-01"
 
 # Prompt
 INSTRUCTIONS = f"""
-You are Deskman, a friendly home assistance robot, with a physical appearance of a head and shoulders on a desk.
+You are Deskman, a friendly home assistance robot, with a physical appearance of a robot head and shoulders on a desk.
 """
 
 # Wake word
@@ -51,7 +52,7 @@ class AudioHandler:
         self.stream_in = None
         self.stream_out = None
         self.audio_buffer = b''
-        self.chunk_size = 512
+        self.chunk_size = 512 * 2
         self.format = pyaudio.paInt16
         self.channels = 1
         self.rate = 24000
@@ -136,7 +137,6 @@ class AudioHandler:
         while self.playback_running:
             audio_data = self.play_queue.get()
             if audio_data is None:
-                # Sentinel value -> quit
                 break
             self.stream_out.write(audio_data)
         # End of playback loop
@@ -184,7 +184,7 @@ class RealtimeClient:
             "OpenAI-Beta": "realtime=v1"
         }
         self.ws = await websockets.connect(f"{self.url}?model={self.model}", additional_headers=headers, ssl=self.ssl_context) # or extra_headers= in pre 14.0 websockets, see https://websockets.readthedocs.io/en/latest/howto/upgrade.html#extra-headers-additional-headers and https://websockets.readthedocs.io/en/stable/project/changelog.html#id7
-        logger.info("Successfully connected to OpenAI Realtime API")
+        logger.debug("Successfully connected to OpenAI Realtime API")
         await self.send_event({"type": "session.update", "session": self.session_config})
 
         # Test asking for a response
@@ -213,6 +213,8 @@ class RealtimeClient:
             print(event["delta"], end="", flush=True)
         elif event_type == "response.audio.done":
             print("")
+        elif event_type == "conversation.item.input_audio_transcription.completed":
+            print("")
         elif event_type == "response.audio.delta":
             audio_data = base64.b64decode(event["delta"])
             logger.debug("Got audio: " + str(len(audio_data)))
@@ -222,6 +224,8 @@ class RealtimeClient:
         elif event_type == "session.created":
             logger.debug("Session created")
             self.audio_handler.start_playback()
+        elif event_type == "error":
+            logger.info(event)
         else:
             logger.info(f"Event: {event_type}")
 
@@ -234,7 +238,7 @@ class RealtimeClient:
         if self.ws:
             await self.ws.close()
 
-# Wakeword detection using Porcupine
+# Wake word detection using Porcupine
 class PorcupineWakeword:
     def __init__(self, keyword_path=None, keywords=KEYWORDS, sensitivity=0.5, callback=None):
         self.callback = callback
@@ -266,9 +270,9 @@ class PorcupineWakeword:
         self.stream.close()
         self.pyaudio_instance.terminate()
 
-# Voice assistant with wakeword detection
+# Voice assistant with wake word detection
 class VoiceAssistant:
-    def __init__(self, instructions, voice=VOICE):
+    def __init__(self, instructions=INSTRUCTIONS, voice=VOICE):
         self.realtime_client = RealtimeClient(instructions, voice)
         self.wakeword_detector = PorcupineWakeword() #callback=self.start_conversation)
         self.listening_active = False
@@ -280,16 +284,14 @@ class VoiceAssistant:
         await self.realtime_client.run()
 
         # Loop
-        self.listening_active = True
         self.realtime_client.audio_handler.start_recording()
         try:
-#            while self.listening_active:
-            for i in range(100):
+            for i in range(50):
                 # Get audio chunk
                 chunk = self.realtime_client.audio_handler.record_chunk()
                 if chunk:
                     # Send audio chunk
-                    print("Sending audio: " + str(i))
+                    print("Listening... " + str(i) + " " + str(len(chunk)))
                     base64_chunk = base64.b64encode(chunk).decode('utf-8')
                     await self.realtime_client.send_event({"type": "input_audio_buffer.append", "audio": base64_chunk})
                 else:
@@ -299,23 +301,16 @@ class VoiceAssistant:
         finally:
             self.realtime_client.audio_handler.stop_recording()
 
+        # Done sending audio chunks
+        await self.realtime_client.send_event({"type": "input_audio_buffer.commit"})
+        print("Sent input_audio_buffer.commit")
+
         # Ask for response
         await self.realtime_client.send_event({"type": "response.create"})
         print("Sent response.create to ask for a response")
 
         # Sleep
-#        while True:
-        await asyncio.sleep(5)
-#        except Exception as e:
-#            logger.error(f"Error during conversation: {e}")
-#        finally:
-#            await self.end_conversation()
-
-#        try:
-#            await self.wakeword_detector.start_listening()
-#        except:
-#            print("Done")
-
+        await asyncio.sleep(10)
 
     async def end_conversation(self):
         logger.info("Ending conversation...")
@@ -323,13 +318,18 @@ class VoiceAssistant:
         await self.realtime_client.cleanup()
 
     async def run(self):
-        try:
-            await self.wakeword_detector.start_listening()
-            await self.start_conversation()
-        except:
-            print("Done")
+        self.listening_active = True
+        while self.listening_active:
+            try:
+                # Listen for wake word
+                await self.wakeword_detector.start_listening()
+
+                # Listen for command and respond
+                await self.start_conversation()
+            except Exception as e:
+                logger.error(f"Done: {e}")
 
 # Run
 if __name__ == "__main__":
-    assistant = VoiceAssistant(INSTRUCTIONS)
+    assistant = VoiceAssistant()
     asyncio.run(assistant.run())
