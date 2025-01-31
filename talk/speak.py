@@ -40,7 +40,7 @@ if PICOVOICE_KEY is None:
     exit()
 
 # Logger setup
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 # Audio handler
@@ -134,8 +134,8 @@ class RealtimeClient:
         self.ws = await websockets.connect(f"{self.url}?model={self.model}", additional_headers=headers, ssl=self.ssl_context) # or extra_headers= in pre 14.0 websockets, see https://websockets.readthedocs.io/en/latest/howto/upgrade.html#extra-headers-additional-headers and https://websockets.readthedocs.io/en/stable/project/changelog.html#id7
         logger.info("Successfully connected to OpenAI Realtime API")
         await self.send_event({"type": "session.update", "session": self.session_config})
-        #await self.send_event({"type": "response.create"})
-        #logger.debug("Sent response.create to initiate conversation")
+        await self.send_event({"type": "response.create"})
+        logger.debug("Sent response.create to initiate conversation")
 
     async def send_event(self, event):
         await self.ws.send(json.dumps(event))
@@ -211,7 +211,7 @@ class PorcupineWakeword:
                 audio_data = self.stream.read(self.porcupine.frame_length)
                 audio_data = struct.unpack_from("h" * self.porcupine.frame_length, audio_data)
                 result = self.porcupine.process(audio_data)
-                if result >= 0:  # Wake word detected
+                if True or result >= 0:  # Wake word detected
                     logging.info("Wake word detected!")
                     self.stop_listening()
                     if self.callback:
@@ -233,12 +233,13 @@ class VoiceAssistant:
         self.conversation_active = False
 
     async def start_conversation(self):
-        logger.info("Starting conversation...")
-
+        print("Starting conversation...")
         # Connect to OpenAI
-        await self.realtime_client.connect()
+        await self.realtime_client.run()
+
         asyncio.create_task(self.realtime_client.receive_events())
         self.conversation_active = True
+        print("Receiving events...")
         try:
             while self.conversation_active:
                 # Get chunk of audio
@@ -267,8 +268,7 @@ class VoiceAssistant:
         try:
             await self.wakeword_detector.start_listening()
         except:
-            # Handle the case where self.wakeword_detector is None
-            print("Wakeword detector not initialized.")
+            print("Done")
 
 # Run
 if __name__ == "__main__":
