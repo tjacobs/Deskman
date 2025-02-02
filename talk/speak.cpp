@@ -23,20 +23,21 @@
 // Base64 encoding
 #include "base64.hpp"
 
+// Keys
+#include "keys.h"
+
 // -----------------------------------------------------------
 // Configuration
 // -----------------------------------------------------------
 
-static const std::string OPENAI_API_KEY = "YOUR_OPENAI_API_KEY";
-static const std::string PICOVOICE_KEY  = "YOUR_PICOVOICE_KEY";
-
+// Configure
 static const std::string MODEL            = "gpt-4o-realtime-preview-2024-10-01";
 static const std::string VOICE            = "ash";
 static const std::string VOICE2           = "alloy";
 static const std::string INSTRUCTIONS     =
     "You are Deskman, a friendly home assistance robot, with a physical appearance of a robot head and shoulders on a desk.";
 
-// The keywords to detect for Porcupine
+// Wake words
 static const std::vector<std::string> KEYWORDS = {"computer"};
 
 // Audio parameters
@@ -50,21 +51,19 @@ static const int FRAMES_PER_BUFFER        = 512 * 2;
 // -----------------------------------------------------------
 class AudioHandler {
 public:
-    AudioHandler()
-        : streamIn(nullptr), streamOut(nullptr), isRecording(false)
-    {
+    AudioHandler(): streamIn(nullptr), streamOut(nullptr), isRecording(false) {
         Pa_Initialize();
     }
 
-    ~AudioHandler()
-    {
+    ~AudioHandler() {
         cleanup();
     }
 
-    bool startAudioStreamIn()
-    {
-        if(streamIn) return true; // already open
+    bool startAudioStreamIn() {
+        // Check already open
+        if (streamIn) return true;
 
+        // Params
         PaStreamParameters inputParameters;
         memset(&inputParameters, 0, sizeof(inputParameters));
         inputParameters.device = Pa_GetDefaultInputDevice();
@@ -73,6 +72,7 @@ public:
         inputParameters.suggestedLatency = Pa_GetDeviceInfo(inputParameters.device)->defaultLowInputLatency;
         inputParameters.hostApiSpecificStreamInfo = nullptr;
 
+        // Open stream
         PaError err = Pa_OpenStream(
             &streamIn,
             &inputParameters,
@@ -88,6 +88,7 @@ public:
             return false;
         }
 
+        // Start stream
         err = Pa_StartStream(streamIn);
         if(err != paNoError) {
             std::cerr << "Pa_StartStream input failed: " << Pa_GetErrorText(err) << std::endl;
@@ -97,10 +98,11 @@ public:
         return true;
     }
 
-    bool startAudioStreamOut()
-    {
-        if(streamOut) return true; // already open
+    bool startAudioStreamOut() {
+        // Check already open
+        if (streamOut) return true;
 
+        // Params
         PaStreamParameters outputParameters;
         memset(&outputParameters, 0, sizeof(outputParameters));
         outputParameters.device = Pa_GetDefaultOutputDevice();
@@ -109,6 +111,7 @@ public:
         outputParameters.suggestedLatency = Pa_GetDeviceInfo(outputParameters.device)->defaultLowOutputLatency;
         outputParameters.hostApiSpecificStreamInfo = nullptr;
 
+        // Open stream
         PaError err = Pa_OpenStream(
             &streamOut,
             nullptr, // no input
@@ -119,11 +122,12 @@ public:
             nullptr, // no callback, we use blocking write
             nullptr
         );
-        if(err != paNoError) {
+        if (err != paNoError) {
             std::cerr << "Pa_OpenStream output failed: " << Pa_GetErrorText(err) << std::endl;
             return false;
         }
 
+        // Start stream
         err = Pa_StartStream(streamOut);
         if(err != paNoError) {
             std::cerr << "Pa_StartStream output failed: " << Pa_GetErrorText(err) << std::endl;
@@ -133,23 +137,20 @@ public:
         return true;
     }
 
-    void startRecording()
-    {
+    void startRecording() {
         isRecording = true;
         audioBuffer.clear();
-        if(!startAudioStreamIn()) {
+        if (!startAudioStreamIn()) {
             std::cerr << "Cannot open input stream for recording.\n";
         }
     }
 
-    void stopRecording()
-    {
+    void stopRecording() {
         isRecording = false;
         stopAudioStreamIn();
     }
 
-    std::vector<int16_t> recordChunk()
-    {
+    std::vector<int16_t> recordChunk() {
         std::vector<int16_t> chunk(FRAMES_PER_BUFFER, 0);
         if(streamIn && isRecording)
         {
@@ -162,34 +163,30 @@ public:
     }
 
     // For output
-    void enqueuePlayback(const std::vector<int16_t>& audioData)
-    {
+    void enqueuePlayback(const std::vector<int16_t>& audioData) {
         std::lock_guard<std::mutex> lock(playMutex);
         playQueue.push(audioData);
         playCond.notify_one();
     }
 
-    void startPlaybackThread()
-    {
+    void startPlaybackThread() {
         if(!playThread.joinable()) {
             playThread = std::thread(&AudioHandler::playLoop, this);
         }
     }
 
-    void stopPlaybackThread()
-    {
+    void stopPlaybackThread() {
         {
             std::lock_guard<std::mutex> lock(playMutex);
             playbackRunning = false;
             playCond.notify_one();
         }
-        if(playThread.joinable()) {
+        if (playThread.joinable()) {
             playThread.join();
         }
     }
 
-    void cleanup()
-    {
+    void cleanup() {
         stopAudioStreamIn();
         stopAudioStreamOut();
         stopPlaybackThread();
@@ -209,36 +206,33 @@ private:
     std::condition_variable playCond;
     bool playbackRunning = true;
 
-    void stopAudioStreamIn()
-    {
-        if(streamIn) {
+    void stopAudioStreamIn() {
+        if (streamIn) {
             Pa_StopStream(streamIn);
             Pa_CloseStream(streamIn);
             streamIn = nullptr;
         }
     }
 
-    void stopAudioStreamOut()
-    {
-        if(streamOut) {
+    void stopAudioStreamOut() {
+        if (streamOut) {
             Pa_StopStream(streamOut);
             Pa_CloseStream(streamOut);
             streamOut = nullptr;
         }
     }
 
-    void playLoop()
-    {
-        if(!startAudioStreamOut()) {
+    void playLoop() {
+        if (!startAudioStreamOut()) {
             std::cerr << "Failed to open output audio stream.\n";
             return;
         }
-        while(true) {
+        while (true) {
             std::vector<int16_t> front;
             {
                 std::unique_lock<std::mutex> lock(playMutex);
                 playCond.wait(lock, [this]{ return !playQueue.empty() || !playbackRunning; });
-                if(!playbackRunning && playQueue.empty()) {
+                if (!playbackRunning && playQueue.empty()) {
                     break;
                 }
                 front = playQueue.front();
@@ -256,9 +250,7 @@ private:
 // -----------------------------------------------------------
 class RealtimeClient {
 public:
-    RealtimeClient(const std::string& instructions_, const std::string& voice_)
-        : instructions(instructions_), voice(voice_), context(nullptr), wsi(nullptr)
-    {
+    RealtimeClient(const std::string& instructions_, const std::string& voice_): instructions(instructions_), voice(voice_), context(nullptr), wsi(nullptr) {
         // Build session config JSON
         nlohmann::json sessionConfig = {
             {"modalities", {"audio", "text"}},
@@ -278,8 +270,7 @@ public:
         sessionConfigStr = sessionConfig.dump();
     }
 
-    ~RealtimeClient()
-    {
+    ~RealtimeClient() {
         // Cleanup websockets
         if(context) {
             lws_context_destroy(context);
@@ -288,8 +279,7 @@ public:
     }
 
     // Initialize the WebSocket client
-    bool initWebSocket()
-    {
+    bool initWebSocket() {
         struct lws_context_creation_info info;
         memset(&info, 0, sizeof info);
 

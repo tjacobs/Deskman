@@ -2,6 +2,6 @@
 .DS_Store
 build/
 src/keys.h
-talk/keys.sh
+talk/keys.*h
 models/
 talk/speak
