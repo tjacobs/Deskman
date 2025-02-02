@@ -34,8 +34,7 @@
 static const std::string MODEL            = "gpt-4o-realtime-preview-2024-10-01";
 static const std::string VOICE            = "ash";
 static const std::string VOICE2           = "alloy";
-static const std::string INSTRUCTIONS     =
-    "You are Deskman, a friendly home assistance robot, with a physical appearance of a robot head and shoulders on a desk.";
+static const std::string INSTRUCTIONS     = "You are Deskman, a friendly home assistance robot, with a physical appearance of a robot head and shoulders on a desk.";
 
 // Wake words
 static const std::vector<std::string> KEYWORDS = {"computer"};
@@ -152,10 +151,10 @@ public:
 
     std::vector<int16_t> recordChunk() {
         std::vector<int16_t> chunk(FRAMES_PER_BUFFER, 0);
-        if(streamIn && isRecording)
+        if (streamIn && isRecording)
         {
             PaError err = Pa_ReadStream(streamIn, chunk.data(), FRAMES_PER_BUFFER);
-            if(err != paNoError) {
+            if (err != paNoError) {
                 // handle error
             }
         }
@@ -170,17 +169,15 @@ public:
     }
 
     void startPlaybackThread() {
-        if(!playThread.joinable()) {
+        if (!playThread.joinable()) {
             playThread = std::thread(&AudioHandler::playLoop, this);
         }
     }
 
     void stopPlaybackThread() {
-        {
-            std::lock_guard<std::mutex> lock(playMutex);
-            playbackRunning = false;
-            playCond.notify_one();
-        }
+        std::lock_guard<std::mutex> lock(playMutex);
+        playbackRunning = false;
+        playCond.notify_one();
         if (playThread.joinable()) {
             playThread.join();
         }
@@ -229,15 +226,14 @@ private:
         }
         while (true) {
             std::vector<int16_t> front;
-            {
-                std::unique_lock<std::mutex> lock(playMutex);
-                playCond.wait(lock, [this]{ return !playQueue.empty() || !playbackRunning; });
-                if (!playbackRunning && playQueue.empty()) {
-                    break;
-                }
-                front = playQueue.front();
-                playQueue.pop();
+            std::unique_lock<std::mutex> lock(playMutex);
+            playCond.wait(lock, [this]{ return !playQueue.empty() || !playbackRunning; });
+            if (!playbackRunning && playQueue.empty()) {
+                break;
             }
+            front = playQueue.front();
+            playQueue.pop();
+
             // Write to PortAudio output
             Pa_WriteStream(streamOut, front.data(), FRAMES_PER_BUFFER);
         }
@@ -290,15 +286,15 @@ public:
         info.uid = -1;
         info.options = LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT;
 
+        // Create
         context = lws_create_context(&info);
         if(!context) {
             std::cerr << "Failed to create lws context.\n";
             return false;
         }
 
-        // Build wss://api.openai.com/v1/realtime?model=...
+        // Connect to wss://api.openai.com/v1/realtime?model=...
         std::string path = "/v1/realtime?model=" + MODEL;
-
         struct lws_client_connect_info ccinfo = {0};
         ccinfo.context = context;
         ccinfo.address = "api.openai.com";
@@ -309,9 +305,8 @@ public:
         ccinfo.protocol = protocols[0].name;
         ccinfo.ssl_connection = LCCSCF_USE_SSL;
         ccinfo.userdata = this;
-
         wsi = lws_client_connect_via_info(&ccinfo);
-        if(!wsi) {
+        if (!wsi) {
             std::cerr << "Failed to connect to server.\n";
             return false;
         }
@@ -320,33 +315,27 @@ public:
     }
 
     // The main service loop for websockets can be run in a dedicated thread
-    void serviceLoop()
-    {
-        while(true) {
+    void serviceLoop() {
+        while (true) {
             lws_service(context, 50);
-            // You can add exit conditions
-            if(stopRequested) {
-                break;
-            }
+            if (stopRequested) { break; }
         }
     }
 
     // Send a JSON event
-    void sendEvent(const nlohmann::json& event)
-    {
+    void sendEvent(const nlohmann::json& event) {
         std::lock_guard<std::mutex> lock(writeMutex);
         std::string payload = event.dump();
-        // lws requires us to allocate buffer with extra space for the WS framing
+
+        // The libwebsockets requires us to allocate buffer with extra space for the WS framing
         size_t len = LWS_PRE + payload.size();
         std::vector<unsigned char> buf(len);
         memcpy(buf.data() + LWS_PRE, payload.data(), payload.size());
-
         lws_write(wsi, buf.data() + LWS_PRE, payload.size(), LWS_WRITE_TEXT);
     }
 
     // Called once the connection is established, we send "session.update"
-    void onConnected()
-    {
+    void onConnected() {
         nlohmann::json evt{
             {"type", "session.update"},
             {"session", nlohmann::json::parse(sessionConfigStr)}
@@ -355,57 +344,54 @@ public:
     }
 
     // Handler for incoming messages
-    void onMessage(const std::string& msg)
-    {
+    void onMessage(const std::string& msg) {
         // Parse JSON
         auto j = nlohmann::json::parse(msg, nullptr, false);
-        if(j.is_discarded()) {
+        if (j.is_discarded()) {
             // Invalid JSON
             return;
         }
-        if(j.contains("type")) {
+        if (j.contains("type")) {
             std::string type = j["type"].get<std::string>();
-            // Example handling
-            if(type == "response.audio_transcript.delta") {
+            if (type == "response.audio_transcript.delta") {
                 std::cout << j["delta"].get<std::string>();
                 std::flush(std::cout);
             }
-            else if(type == "response.audio.done") {
+            else if (type == "response.audio.done") {
                 std::cout << std::endl;
             }
-            else if(type == "response.audio.delta") {
+            else if (type == "response.audio.delta") {
                 // base64 decode
                 std::string b64data = j["delta"].get<std::string>();
                 std::vector<uint8_t> audioBytes = base64Decode(b64data);
+
                 // Convert to int16_t for playback
                 std::vector<int16_t> samples(audioBytes.size()/2);
                 memcpy(samples.data(), audioBytes.data(), audioBytes.size());
                 audioHandler.enqueuePlayback(samples);
             }
-            else if(type == "response.done") {
+            else if (type == "response.done") {
                 std::cout << "Response generation completed.\n";
             }
-            else if(type == "session.created") {
+            else if (type == "session.created") {
                 std::cout << "Session created.\n";
                 audioHandler.startPlaybackThread();
             }
-            else if(type == "error") {
+            else if (type == "error") {
                 std::cerr << "Error event received: " << j.dump() << std::endl;
             }
             else {
-                // ...
+
             }
         }
     }
 
     // Called on close
-    void onClose()
-    {
+    void onClose() {
         std::cout << "WebSocket closed.\n";
     }
 
-    void close()
-    {
+    void close() {
         stopRequested = true;
     }
 
@@ -413,10 +399,8 @@ public:
     AudioHandler audioHandler;
 
 private:
-    // libwebsockets callbacks
-    static int callback_openai(struct lws* wsi, enum lws_callback_reasons reason,
-                               void* user, void* in, size_t len)
-    {
+    // The libwebsockets callbacks
+    static int callback_openai(struct lws* wsi, enum lws_callback_reasons reason, void* user, void* in, size_t len) {
         auto* client = reinterpret_cast<RealtimeClient*>(lws_wsi_user(wsi));
         switch(reason) {
             case LWS_CALLBACK_CLIENT_ESTABLISHED:
@@ -425,7 +409,7 @@ private:
                 break;
             case LWS_CALLBACK_CLIENT_RECEIVE:
                 // Received a message
-                if(in && len > 0) {
+                if (in && len > 0) {
                     std::string msg((char*)in, len);
                     client->onMessage(msg);
                 }
@@ -439,13 +423,14 @@ private:
         return 0;
     }
 
+    // Data
     static struct lws_protocols protocols[];
-
     struct lws_context* context;
     struct lws* wsi;
     std::mutex writeMutex;
     bool stopRequested = false;
 
+    // Params
     std::string instructions;
     std::string voice;
     std::string sessionConfigStr;
@@ -467,13 +452,8 @@ struct lws_protocols RealtimeClient::protocols[] = {
 // -----------------------------------------------------------
 class PorcupineWakeword {
 public:
-    PorcupineWakeword(const std::vector<std::string>& keywords, float sensitivity)
-        : handle(nullptr), listening(false)
-    {
-        // Construct handle with the Porcupine C++ API
-        // For multiple keywords, you'd create a model of type PV_MODEL_EN, then pass multiple paths.
-        // If you are using built-in keywords, see the documentation for how to do that in C++.
-        // e.g.:
+    PorcupineWakeword(const std::vector<std::string>& keywords, float sensitivity): handle(nullptr), listening(false) {
+        // Init
         pv_status_t status; //pv_porcupine_init(
 //            PICOVOICE_KEY.c_str(), // Access key
 //            pv_porcupine_keywords::PV_KEYWORD_COMPUTER, // Example built-in keyword
@@ -481,26 +461,24 @@ public:
 //            sensitivity,
 //            &handle
 //        );
-        if(status != PV_STATUS_SUCCESS) {
+        if (status != PV_STATUS_SUCCESS) {
             std::cerr << "Failed to init Porcupine.\n";
             handle = nullptr;
         }
     }
 
-    ~PorcupineWakeword()
-    {
-        if(handle) {
+    ~PorcupineWakeword() {
+        if (handle) {
             pv_porcupine_delete(handle);
         }
     }
 
-    // Start listening in a blocking fashion
-    // (In real usage, you'd do this in a separate thread.)
-    bool listen()
-    {
-        if(!handle) {
-            return false;
-        }
+    // Start listening in a blocking fashion, can move to separate thread
+    bool listen() {
+        // Check init
+        if (!handle) { return false; }
+
+        // Open portaudio stream
         listening = true;
         PaStream* stream;
         Pa_Initialize();
@@ -511,44 +489,45 @@ public:
         inputParameters.sampleFormat = paInt16;
         inputParameters.suggestedLatency = Pa_GetDeviceInfo(inputParameters.device)->defaultLowInputLatency;
         inputParameters.hostApiSpecificStreamInfo = nullptr;
-
         PaError err = Pa_OpenStream(&stream,
                                     &inputParameters,
                                     nullptr,
-                                    pv_sample_rate(), // sample rate
-                                    pv_porcupine_frame_length(), // frames per buffer
+                                    pv_sample_rate(),
+                                    pv_porcupine_frame_length(),
                                     paClipOff,
                                     nullptr,
                                     nullptr);
-        if(err != paNoError) {
+        if (err != paNoError) {
             std::cerr << "Pa_OpenStream failed: " << Pa_GetErrorText(err) << std::endl;
             return false;
         }
         Pa_StartStream(stream);
-
         std::cout << "Listening for wake word...\n";
 
-        while(listening) {
-            // read data
+        // Listen
+        while (listening) {
+            // Read data
             std::vector<int16_t> buffer(pv_porcupine_frame_length());
             err = Pa_ReadStream(stream, buffer.data(), pv_porcupine_frame_length());
-            if(err != paNoError) {
-                // handle error
+            if (err != paNoError) {
+                // Handle error
                 continue;
             }
             int32_t keyword_index = -1;
             pv_status_t status = pv_porcupine_process(handle, buffer.data(), &keyword_index);
-            if(status != PV_STATUS_SUCCESS) {
-                // handle error
+            if (status != PV_STATUS_SUCCESS) {
+                // Handle error
                 continue;
             }
 
-            if(keyword_index >= 0) {
+            // Detected?
+            if (keyword_index >= 0) {
                 std::cout << "Wake word detected!\n";
                 stop();
             }
         }
 
+        // Got it
         std::cout << "Stopped listening for wake word.\n";
         Pa_StopStream(stream);
         Pa_CloseStream(stream);
@@ -556,8 +535,7 @@ public:
         return true;
     }
 
-    void stop()
-    {
+    void stop() {
         listening = false;
     }
 
@@ -571,92 +549,74 @@ private:
 // -----------------------------------------------------------
 class VoiceAssistant {
 public:
-    VoiceAssistant()
-        : realtimeClient(INSTRUCTIONS, VOICE)
-        , wakeword(KEYWORDS, 0.5f)
-    {
+    VoiceAssistant(): realtimeClient(INSTRUCTIONS, VOICE), wakeword(KEYWORDS, 0.5f) {
     }
 
-    // The main "run" similar to Python's async run loop
-    void run()
-    {
-        // Start a thread that runs the websocket’s service loop:
-        if(!realtimeClient.initWebSocket()) {
+    void run() {
+        // Init websockets and start a thread that runs the websocket’s service loop:
+        if (!realtimeClient.initWebSocket()) {
             std::cerr << "WebSocket init failed.\n";
             return;
         }
-        std::thread wsThread([this] {
-            realtimeClient.serviceLoop();
-        });
+        std::thread wsThread([this] { realtimeClient.serviceLoop(); });
 
         // The main loop: wait for wake word, then capture audio, send to OpenAI, etc.
-        while(true) {
+        while (true) {
             // 1. Block waiting for wake word
-            wakeword.listen(); // This blocks until wake word is detected
+//            wakeword.listen();
 
             // 2. Start conversation
             startConversation();
-            // (Optionally) break or continue in a loop
-            // break;
+
+            // 3. Sleep
+            std::this_thread::sleep_for(std::chrono::seconds(10));
+            break;
         }
 
-        // Cleanup
+        // Clean up
         realtimeClient.close();
-        if(wsThread.joinable()) {
-            wsThread.join();
-        }
+        if (wsThread.joinable()) { wsThread.join(); }
         realtimeClient.audioHandler.cleanup();
     }
 
 private:
-    void startConversation()
-    {
+    void startConversation() {
         std::cout << "Starting conversation...\n";
 
         // Start recording from the user
-        realtimeClient.audioHandler.startRecording();
+//        realtimeClient.audioHandler.startRecording();
 
-        // Send audio chunks to the Realtime API
-        for(int i=0; i<50; i++) {
+        // Send audio chunks to the OpenAI realtime API
+        if (false)
+        for (int i=0; i<50; i++) {
+            // Get audio chunk
             auto chunk = realtimeClient.audioHandler.recordChunk();
-            if(!chunk.empty()) {
+            if (!chunk.empty()) {
                 std::cout << "Listening... " << i << " frames read: " << chunk.size() << std::endl;
-                // base64 encode
-                std::string b64chunk = base64Encode(
-                    reinterpret_cast<const uint8_t*>(chunk.data()),
-                    chunk.size()*sizeof(int16_t)
-                );
 
-                nlohmann::json evt{
-                    {"type",  "input_audio_buffer.append"},
-                    {"audio", b64chunk}
-                };
+                // Base64 encode
+                std::string b64chunk = base64Encode(reinterpret_cast<const uint8_t*>(chunk.data()), chunk.size()*sizeof(int16_t));
+
+                // Send to OpenAI
+                nlohmann::json evt{ {"type",  "input_audio_buffer.append"}, {"audio", b64chunk} };
                 realtimeClient.sendEvent(evt);
             }
         }
 
         // Stop recording
-        realtimeClient.audioHandler.stopRecording();
+//        realtimeClient.audioHandler.stopRecording();
 
         // Commit the audio buffer
-        {
-            nlohmann::json evt{
-                {"type", "input_audio_buffer.commit"}
-            };
-            realtimeClient.sendEvent(evt);
-        }
-        std::cout << "Sent input_audio_buffer.commit\n";
+        nlohmann::json evt{ {"type", "input_audio_buffer.commit"}};
+//        realtimeClient.sendEvent(evt);
+//        std::cout << "Sent input_audio_buffer.commit\n";
 
         // Ask for a response
-        {
-            nlohmann::json evt{
-                {"type", "response.create"}
-            };
-            realtimeClient.sendEvent(evt);
-        }
+        nlohmann::json evtResponse{ {"type", "response.create"} };
+        realtimeClient.sendEvent(evtResponse);
         std::cout << "Sent response.create\n";
 
-        // Sleep or do something else while waiting for the response
+        // Sleep
         std::this_thread::sleep_for(std::chrono::seconds(10));
     }
 
@@ -666,10 +626,9 @@ private:
 };
 
 // -----------------------------------------------------------
-// main
+// Main
 // -----------------------------------------------------------
-int main()
-{
+int main() {
     VoiceAssistant assistant;
     assistant.run();
     return 0;
