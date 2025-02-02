@@ -4,3 +4,4 @@ build/
 src/keys.h
 talk/keys.sh
 models/
+talk/speak
