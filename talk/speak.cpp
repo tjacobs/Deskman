@@ -274,6 +274,10 @@ public:
         struct lws_context_creation_info info;
         memset(&info, 0, sizeof info);
 
+        // Only log errors and warnings
+        int logs = LLL_ERR | LLL_WARN;
+        lws_set_log_level(logs, NULL);
+
         // Use the default event loop (1 thread)
         info.port = CONTEXT_PORT_NO_LISTEN;
         info.protocols = protocols;
@@ -401,10 +405,12 @@ private:
     // The libwebsockets callbacks
     static int callback_openai(struct lws* wsi, enum lws_callback_reasons reason, void* user, void* in, size_t len) {
         auto* client = reinterpret_cast<RealtimeClient*>(lws_wsi_user(wsi));
-        switch(reason) {
+        printf("CALLBACK %d\n", reason);
+        switch (reason) {
             case LWS_CALLBACK_CLIENT_ESTABLISHED:
                 // Connection established
                 client->onConnected();
+                printf("CONNECTED\n");
                 break;
             case LWS_CALLBACK_CLIENT_RECEIVE:
                 // Received a message
@@ -416,7 +422,16 @@ private:
             case LWS_CALLBACK_CLIENT_CLOSED:
                 client->onClose();
                 break;
+            case LWS_CALLBACK_CLIENT_CONNECTION_ERROR:
+                if (in && len > 0) {
+                    std::string msg((char*)in, len);
+                    std::cout << msg << std::endl;
+                }
             default:
+                if (in && len > 0) {
+                    std::string msg((char*)in, len);
+                    std::cout << msg << std::endl;
+                }
                 break;
         }
         return 0;
