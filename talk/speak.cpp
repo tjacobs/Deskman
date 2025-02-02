@@ -1,12 +1,8 @@
-#include <iostream>
-#include <thread>
-#include <atomic>
 #include <queue>
-#include <mutex>
-#include <condition_variable>
 #include <string>
 #include <vector>
-#include <cstring>
+#include <thread>
+#include <iostream>
 
 // JSON
 #include <nlohmann/json.hpp>
@@ -33,7 +29,6 @@
 // Configure
 static const std::string MODEL            = "gpt-4o-realtime-preview-2024-10-01";
 static const std::string VOICE            = "ash";
-static const std::string VOICE2           = "alloy";
 static const std::string INSTRUCTIONS     = "You are Deskman, a friendly home assistance robot, with a physical appearance of a robot head and shoulders on a desk.";
 
 // Wake words
@@ -155,7 +150,7 @@ public:
         {
             PaError err = Pa_ReadStream(streamIn, chunk.data(), FRAMES_PER_BUFFER);
             if (err != paNoError) {
-                // handle error
+                // Handle error
             }
         }
         return chunk;
@@ -267,8 +262,8 @@ public:
     }
 
     ~RealtimeClient() {
-        // Cleanup websockets
-        if(context) {
+        // Clean up websockets
+        if (context) {
             lws_context_destroy(context);
             context = nullptr;
         }
@@ -288,12 +283,12 @@ public:
 
         // Create
         context = lws_create_context(&info);
-        if(!context) {
+        if (!context) {
             std::cerr << "Failed to create lws context.\n";
             return false;
         }
 
-        // Connect to wss://api.openai.com/v1/realtime?model=...
+        // Connect to wss://api.openai.com/v1/realtime?model=MODEL
         std::string path = "/v1/realtime?model=" + MODEL;
         struct lws_client_connect_info ccinfo = {0};
         ccinfo.context = context;
@@ -324,13 +319,16 @@ public:
 
     // Send a JSON event
     void sendEvent(const nlohmann::json& event) {
+        // Get mutex and payload
         std::lock_guard<std::mutex> lock(writeMutex);
         std::string payload = event.dump();
 
-        // The libwebsockets requires us to allocate buffer with extra space for the WS framing
+        // The libwebsockets library requires us to allocate buffer with extra space for the WS framing
         size_t len = LWS_PRE + payload.size();
         std::vector<unsigned char> buf(len);
         memcpy(buf.data() + LWS_PRE, payload.data(), payload.size());
+
+        // Send
         lws_write(wsi, buf.data() + LWS_PRE, payload.size(), LWS_WRITE_TEXT);
     }
 
@@ -341,6 +339,7 @@ public:
             {"session", nlohmann::json::parse(sessionConfigStr)}
         };
         sendEvent(evt);
+        printf("Sent session.update");
     }
 
     // Handler for incoming messages
@@ -361,7 +360,7 @@ public:
                 std::cout << std::endl;
             }
             else if (type == "response.audio.delta") {
-                // base64 decode
+                // Base64 decode
                 std::string b64data = j["delta"].get<std::string>();
                 std::vector<uint8_t> audioBytes = base64Decode(b64data);
 
@@ -381,7 +380,7 @@ public:
                 std::cerr << "Error event received: " << j.dump() << std::endl;
             }
             else {
-
+                std::cout << "Event: " << j.dump() << std::endl;
             }
         }
     }
@@ -549,8 +548,7 @@ private:
 // -----------------------------------------------------------
 class VoiceAssistant {
 public:
-    VoiceAssistant(): realtimeClient(INSTRUCTIONS, VOICE), wakeword(KEYWORDS, 0.5f) {
-    }
+    VoiceAssistant(): realtimeClient(INSTRUCTIONS, VOICE), wakeword(KEYWORDS, 0.5f) { }
 
     void run() {
         // Init websockets and start a thread that runs the websocket’s service loop:
