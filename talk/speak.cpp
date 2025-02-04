@@ -339,7 +339,6 @@ public:
             {"session", nlohmann::json::parse(sessionConfigStr)}
         };
         sendEvent(evt);
-        printf("Sent session.update\n");
     }
 
     // Handler for incoming messages
@@ -374,18 +373,16 @@ public:
                 std::cout << "Response generation completed.\n";
             }
             else if (type == "session.created") {
-                std::cout << "Session created, starting playback.\n";
                 audioHandler.startPlaybackThread();
             }
             else if (type == "session.updated") {
-                std::cout << "Session updated, ready.\n";
                 ready = true;
             }
             else if (type == "error") {
                 std::cerr << "Error event received: " << j.dump() << std::endl;
             }
             else {
-                std::cout << "Event: " << j["type"] << /* j.dump() << */ std::endl;
+                //std::cout << "Event: " << j["type"] << /* j.dump() << */ std::endl;
             }
         }
     }
@@ -433,7 +430,7 @@ private:
                 break;
             case LWS_CALLBACK_CLIENT_ESTABLISHED:
                 // Connection established
-                printf("Connected.\n");
+                printf("Connected to OpenAI.\n");
                 client->onConnected();
                 break;
             case LWS_CALLBACK_CLIENT_RECEIVE:
@@ -496,7 +493,7 @@ class PorcupineWakeword {
 public:
     PorcupineWakeword(const std::vector<std::string>& keywords, float sensitivity): handle(nullptr), listening(false) {
         // Init
-        const char* keyword_paths[] = { "Hey-robot_en_raspberry-pi_v3_0_0.ppn" };
+        const char* keyword_paths[] = { "computer_mac.ppn" };
         float sensitivities[] = {0.5f};
         pv_status_t status = pv_porcupine_init(
             PICOVOICE_KEY.c_str(),
@@ -507,7 +504,7 @@ public:
             &handle
         );
         if (status != PV_STATUS_SUCCESS) {
-            std::cerr << "Failed to init Porcupine.\n";
+            std::cerr << "Failed to init Porcupine wake word.\n";
             handle = nullptr;
         }
     }
@@ -573,7 +570,6 @@ public:
         }
 
         // Got it
-        std::cout << "Stopped listening for wake word.\n";
         Pa_StopStream(stream);
         Pa_CloseStream(stream);
         Pa_Terminate();
@@ -604,17 +600,19 @@ public:
         }
         std::thread wsThread([this] { realtimeClient.serviceLoop(); });
 
+        // Sleep
+        std::this_thread::sleep_for(std::chrono::seconds(2));
+
         // The main loop: wait for wake word, then capture audio, send to OpenAI, etc.
         while (true) {
             // 1. Block waiting for wake word
-//            wakeword.listen();
+            wakeword.listen();
 
             // 2. Start conversation
             startConversation();
 
             // 3. Sleep
-            std::this_thread::sleep_for(std::chrono::seconds(100));
-            break;
+//            std::this_thread::sleep_for(std::chrono::seconds(10));
         }
 
         // Clean up
@@ -660,15 +658,13 @@ private:
         realtimeClient.sendEvent(evt);
         std::cout << "Sent input_audio_buffer.commit\n";
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-
         // Ask for a response
         nlohmann::json evtResponse{ {"type", "response.create"} };
         realtimeClient.sendEvent(evtResponse);
         std::cout << "Sent response.create\n";
 
         // Sleep
-        std::this_thread::sleep_for(std::chrono::seconds(100));
+        //std::this_thread::sleep_for(std::chrono::seconds(5));
     }
 
 private:
