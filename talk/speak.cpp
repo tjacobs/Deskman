@@ -1,3 +1,6 @@
+// Deskman robot.
+// Thomas Jacobs
+
 #include <queue>
 #include <string>
 #include <vector>
@@ -25,14 +28,15 @@
 // -----------------------------------------------------------
 // Configuration
 // -----------------------------------------------------------
+using namespace std;
 
 // Configure
-static const std::string MODEL            = "gpt-4o-realtime-preview-2024-10-01";
-static const std::string VOICE            = "ash";
-static const std::string INSTRUCTIONS     = "You are Deskman, a friendly home assistance robot, with a physical appearance of a robot head and shoulders on a desk.";
+static const string MODEL            = "gpt-4o-realtime-preview-2024-10-01";
+static const string VOICE            = "ash";
+static const string INSTRUCTIONS     = "You are Deskman, a friendly home assistance robot, with a physical appearance of a robot head and shoulders on a desk.";
 
 // Wake words
-static const std::vector<std::string> KEYWORDS = {"computer"};
+static const vector<string> KEYWORDS = {"computer"};
 
 // Audio parameters
 static const int FRAMES_PER_BUFFER        = 512 * 10;
@@ -78,14 +82,14 @@ public:
             nullptr
         );
         if(err != paNoError) {
-            std::cerr << "Pa_OpenStream input failed: " << Pa_GetErrorText(err) << std::endl;
+            cerr << "Pa_OpenStream input failed: " << Pa_GetErrorText(err) << endl;
             return false;
         }
 
         // Start stream
         err = Pa_StartStream(streamIn);
         if(err != paNoError) {
-            std::cerr << "Pa_StartStream input failed: " << Pa_GetErrorText(err) << std::endl;
+            cerr << "Pa_StartStream input failed: " << Pa_GetErrorText(err) << endl;
             return false;
         }
 
@@ -117,14 +121,14 @@ public:
             nullptr
         );
         if (err != paNoError) {
-            std::cerr << "Pa_OpenStream output failed: " << Pa_GetErrorText(err) << std::endl;
+            cerr << "Pa_OpenStream output failed: " << Pa_GetErrorText(err) << endl;
             return false;
         }
 
         // Start stream
         err = Pa_StartStream(streamOut);
         if(err != paNoError) {
-            std::cerr << "Pa_StartStream output failed: " << Pa_GetErrorText(err) << std::endl;
+            cerr << "Pa_StartStream output failed: " << Pa_GetErrorText(err) << endl;
             return false;
         }
 
@@ -135,7 +139,7 @@ public:
         isRecording = true;
         audioBuffer.clear();
         if (!startAudioStreamIn()) {
-            std::cerr << "Cannot open input stream for recording.\n";
+            cerr << "Cannot open input stream for recording.\n";
         }
     }
 
@@ -144,8 +148,8 @@ public:
         stopAudioStreamIn();
     }
 
-    std::vector<int16_t> recordChunk() {
-        std::vector<int16_t> chunk(FRAMES_PER_BUFFER, 0);
+    vector<int16_t> recordChunk() {
+        vector<int16_t> chunk(FRAMES_PER_BUFFER, 0);
         if (streamIn && isRecording) {
             PaError err = Pa_ReadStream(streamIn, chunk.data(), FRAMES_PER_BUFFER);
             if (err != paNoError) {
@@ -156,21 +160,21 @@ public:
     }
 
     // For output
-    void enqueuePlayback(const std::vector<int16_t>& audioData) {
-        //std::cout << "Queuing " << audioData.size() << " samples." << std::endl;
-        std::lock_guard<std::mutex> lock(playMutex);
+    void enqueuePlayback(const vector<int16_t>& audioData) {
+        //cout << "Queuing " << audioData.size() << " samples." << endl;
+        lock_guard<mutex> lock(playMutex);
         playQueue.push(audioData);
         playCond.notify_one();
     }
 
     void startPlaybackThread() {
         if (!playThread.joinable()) {
-            playThread = std::thread(&AudioHandler::playLoop, this);
+            playThread = thread(&AudioHandler::playLoop, this);
         }
     }
 
     void stopPlaybackThread() {
-        std::lock_guard<std::mutex> lock(playMutex);
+        lock_guard<mutex> lock(playMutex);
         playbackRunning = false;
         playCond.notify_one();
         if (playThread.joinable()) {
@@ -189,13 +193,13 @@ private:
     PaStream* streamIn;
     PaStream* streamOut;
     bool isRecording;
-    std::vector<int16_t> audioBuffer;
+    vector<int16_t> audioBuffer;
 
     // Playback
-    std::thread playThread;
-    std::queue<std::vector<int16_t>> playQueue;
-    std::mutex playMutex;
-    std::condition_variable playCond;
+    thread playThread;
+    queue<vector<int16_t>> playQueue;
+    mutex playMutex;
+    condition_variable playCond;
     bool playbackRunning = true;
 
     void stopAudioStreamIn() {
@@ -216,12 +220,12 @@ private:
 
     void playLoop() {
         if (!startAudioStreamOut()) {
-            std::cerr << "Failed to open output audio stream.\n";
+            cerr << "Failed to open output audio stream.\n";
             return;
         }
         while (true) {
-            std::vector<int16_t> front;
-            std::unique_lock<std::mutex> lock(playMutex);
+            vector<int16_t> front;
+            unique_lock<mutex> lock(playMutex);
             playCond.wait(lock, [this]{ return !playQueue.empty() || !playbackRunning; });
             if (!playbackRunning && playQueue.empty()) { break; }
             front = playQueue.front();
@@ -239,7 +243,7 @@ private:
 // -----------------------------------------------------------
 class RealtimeClient {
 public:
-    RealtimeClient(const std::string& instructions_, const std::string& voice_): instructions(instructions_), voice(voice_), context(nullptr), wsi(nullptr) {
+    RealtimeClient(const string& instructions_, const string& voice_): instructions(instructions_), voice(voice_), context(nullptr), wsi(nullptr) {
         // Build session config JSON
         nlohmann::json sessionConfig = {
             {"modalities", {"audio", "text"}},
@@ -269,6 +273,7 @@ public:
 
     // Initialize the WebSocket client
     bool initWebSocket() {
+        // Context
         struct lws_context_creation_info info;
         memset(&info, 0, sizeof info);
 
@@ -286,7 +291,7 @@ public:
         // Create
         context = lws_create_context(&info);
         if (!context) {
-            std::cerr << "Failed to create lws context.\n";
+            cerr << "Failed to create lws context.\n";
             return false;
         }
 
@@ -296,14 +301,14 @@ public:
         ccinfo.address = "api.openai.com";
         ccinfo.host = ccinfo.address;
         ccinfo.port = 443;
-        std::string path = "/v1/realtime?model=" + MODEL;
+        string path = "/v1/realtime?model=" + MODEL;
         ccinfo.path = path.c_str();
         ccinfo.origin = "origin";
         ccinfo.ssl_connection = LCCSCF_USE_SSL;
         ccinfo.userdata = this;
         wsi = lws_client_connect_via_info(&ccinfo);
         if (!wsi) {
-            std::cerr << "Failed to connect to server.\n";
+            cerr << "Failed to connect to server.\n";
             return false;
         }
         return true;
@@ -320,12 +325,12 @@ public:
     // Send a JSON event
     void sendEvent(const nlohmann::json& event) {
         // Get mutex and payload
-        std::lock_guard<std::mutex> lock(writeMutex);
-        std::string payload = event.dump();
+        lock_guard<mutex> lock(writeMutex);
+        string payload = event.dump();
 
         // The libwebsockets library requires us to allocate buffer with extra space for the WS framing
         size_t len = LWS_PRE + payload.size();
-        std::vector<unsigned char> buf(len);
+        vector<unsigned char> buf(len);
         memcpy(buf.data() + LWS_PRE, payload.data(), payload.size());
 
         // Send
@@ -342,54 +347,55 @@ public:
     }
 
     // Handler for incoming messages
-    void onMessage(const std::string& msg) {
+    void onMessage(const string& msg) {
         // Parse JSON
         auto j = nlohmann::json::parse(msg, nullptr, false);
         if (j.is_discarded()) {
             // Invalid JSON
-            std::cout << "Bad JSON: " << msg << std::endl;
+            cout << "Bad JSON: " << msg << endl;
             return;
         }
         if (j.contains("type")) {
-            std::string type = j["type"].get<std::string>();
+            string type = j["type"].get<string>();
             if (type == "response.audio_transcript.delta") {
-                std::cout << j["delta"].get<std::string>();
-                std::flush(std::cout);
+                cout << j["delta"].get<string>();
+                flush(cout);
             }
             else if (type == "response.audio.done") {
-                std::cout << std::endl;
+                cout << endl;
             }
             else if (type == "response.audio.delta") {
                 // Base64 decode
-                std::string b64data = j["delta"].get<std::string>();
-                std::vector<uint8_t> audioBytes = base64Decode(b64data);
+                string b64data = j["delta"].get<string>();
+                vector<uint8_t> audioBytes = base64Decode(b64data);
 
                 // Convert to int16_t for playback
-                std::vector<int16_t> samples(audioBytes.size()/2);
+                vector<int16_t> samples(audioBytes.size()/2);
                 memcpy(samples.data(), audioBytes.data(), audioBytes.size());
                 audioHandler.enqueuePlayback(samples);
             }
             else if (type == "response.done") {
-                std::cout << "Response generation completed.\n";
+                cout << "Response generation completed.\n";
             }
             else if (type == "session.created") {
                 audioHandler.startPlaybackThread();
             }
             else if (type == "session.updated") {
+                cerr << "Event: " << j.dump() << endl;
                 ready = true;
             }
             else if (type == "error") {
-                std::cerr << "Error event received: " << j.dump() << std::endl;
+                cerr << "Error event received: " << j.dump() << endl;
             }
             else {
-                //std::cout << "Event: " << j["type"] << /* j.dump() << */ std::endl;
+                //cout << "Event: " << j["type"] << /* j.dump() << */ endl;
             }
         }
     }
 
     // Called on close
     void onClose() {
-        std::cout << "WebSocket closed.\n";
+        cout << "WebSocket closed.\n";
     }
 
     void close() {
@@ -413,7 +419,7 @@ private:
                     unsigned char* end = (*p) + len;
 
                     // Add "Authorization: Bearer <OPENAI_API_KEY>"
-                    std::string authValue = "Bearer " + OPENAI_API_KEY;
+                    string authValue = "Bearer " + OPENAI_API_KEY;
                     int ret = lws_add_http_header_by_name(wsi,
                         (unsigned char*)"Authorization:",
                         (unsigned char*)authValue.c_str(),
@@ -436,7 +442,7 @@ private:
             case LWS_CALLBACK_CLIENT_RECEIVE:
                 // Received a message
                 if (in && len > 0) {
-                    std::string msg((char*)in, len);
+                    string msg((char*)in, len);
                     client->onMessage(msg);
                 }
                 break;
@@ -444,17 +450,17 @@ private:
                 client->onClose();
                 break;
             case LWS_CALLBACK_CLIENT_CONNECTION_ERROR:
-                std::cout << "Connection error:" << std::endl;
+                cout << "Connection error:" << endl;
                 if (in && len > 0) {
-                    std::string msg((char*)in, len);
-                    std::cout << msg << std::endl;
+                    string msg((char*)in, len);
+                    cout << msg << endl;
                 }
             default:
                 if (false) {
-                    std::cout << "Other:" << std::endl;
+                    cout << "Other:" << endl;
                     if (in && len > 0) {
-                        std::string msg((char*)in, len);
-                        std::cout << msg << std::endl;
+                        string msg((char*)in, len);
+                        cout << msg << endl;
                     }
                 }
                 break;
@@ -466,13 +472,13 @@ private:
     static struct lws_protocols protocols[];
     struct lws_context* context;
     struct lws* wsi;
-    std::mutex writeMutex;
+    mutex writeMutex;
     bool stopRequested = false;
 
     // Params
-    std::string instructions;
-    std::string voice;
-    std::string sessionConfigStr;
+    string instructions;
+    string voice;
+    string sessionConfigStr;
 };
 
 // Definition of the protocols
@@ -491,7 +497,7 @@ struct lws_protocols RealtimeClient::protocols[] = {
 // -----------------------------------------------------------
 class PorcupineWakeword {
 public:
-    PorcupineWakeword(const std::vector<std::string>& keywords, float sensitivity): handle(nullptr), listening(false) {
+    PorcupineWakeword(const vector<string>& keywords, float sensitivity): handle(nullptr), listening(false) {
         // Init
         const char* keyword_paths[] = { "computer_mac.ppn" };
         float sensitivities[] = {0.5f};
@@ -504,7 +510,7 @@ public:
             &handle
         );
         if (status != PV_STATUS_SUCCESS) {
-            std::cerr << "Failed to init Porcupine wake word.\n";
+            cerr << "Failed to init Porcupine wake word.\n";
             handle = nullptr;
         }
     }
@@ -540,16 +546,16 @@ public:
                                     nullptr,
                                     nullptr);
         if (err != paNoError) {
-            std::cerr << "Pa_OpenStream failed: " << Pa_GetErrorText(err) << std::endl;
+            cerr << "Pa_OpenStream failed: " << Pa_GetErrorText(err) << endl;
             return false;
         }
         Pa_StartStream(stream);
-        std::cout << "Listening for wake word...\n";
+        cout << "Listening for wake word...\n";
 
         // Listen
         while (listening) {
             // Read data
-            std::vector<int16_t> buffer(pv_porcupine_frame_length());
+            vector<int16_t> buffer(pv_porcupine_frame_length());
             err = Pa_ReadStream(stream, buffer.data(), pv_porcupine_frame_length());
             if (err != paNoError) {
                 // Handle error
@@ -564,7 +570,7 @@ public:
 
             // Detected?
             if (keyword_index >= 0) {
-                std::cout << "Wake word detected!\n";
+                cout << "Wake word detected!\n";
                 stop();
             }
         }
@@ -582,7 +588,7 @@ public:
 
 private:
     pv_porcupine_t* handle;
-    std::atomic<bool> listening;
+    atomic<bool> listening;
 };
 
 // -----------------------------------------------------------
@@ -595,13 +601,13 @@ public:
     void run() {
         // Init websockets and start a thread that runs the websocket’s service loop
         if (!realtimeClient.initWebSocket()) {
-            std::cerr << "WebSocket init failed.\n";
+            cerr << "WebSocket init failed.\n";
             return;
         }
-        std::thread wsThread([this] { realtimeClient.serviceLoop(); });
+        thread wsThread([this] { realtimeClient.serviceLoop(); });
 
         // Sleep
-        std::this_thread::sleep_for(std::chrono::seconds(2));
+        this_thread::sleep_for(chrono::seconds(2));
 
         // The main loop: wait for wake word, then capture audio, send to OpenAI, etc.
         while (true) {
@@ -612,7 +618,7 @@ public:
             startConversation();
 
             // 3. Sleep
-//            std::this_thread::sleep_for(std::chrono::seconds(10));
+            //this_thread::sleep_for(chrono::seconds(10));
         }
 
         // Clean up
@@ -623,14 +629,14 @@ public:
 
 private:
     void startConversation() {
-        std::cout << "Starting conversation...\n";
+        cout << "Starting conversation...\n";
 
         // Start recording from the user
         realtimeClient.audioHandler.startRecording();
 
         // Sleep until OpenAI is session.updated ready
         while (!realtimeClient.ready) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            this_thread::sleep_for(chrono::milliseconds(100));
         }
 
         // Send audio chunks to the OpenAI realtime API
@@ -638,10 +644,10 @@ private:
             // Get audio chunk
             auto chunk = realtimeClient.audioHandler.recordChunk();
             if (!chunk.empty()) {
-                std::cout << "Listening... " << i << " frames read: " << chunk.size() << std::endl;
+                cout << "Listening... " << i << endl; //<< " frames read: " << chunk.size() << endl;
 
                 // Base64 encode
-                std::string b64chunk = base64Encode(reinterpret_cast<const uint8_t*>(chunk.data()), chunk.size()*sizeof(int16_t));
+                string b64chunk = base64Encode(reinterpret_cast<const uint8_t*>(chunk.data()), chunk.size()*sizeof(int16_t));
 
                 // Send to OpenAI
                 nlohmann::json evt{ {"type",  "input_audio_buffer.append"}, {"audio", b64chunk} };
@@ -650,21 +656,21 @@ private:
         }
 
         // Stop recording
-        std::cout << "Done listening." << std::endl;
+        cout << "Done listening." << endl;
         realtimeClient.audioHandler.stopRecording();
 
         // Commit the audio buffer
         nlohmann::json evt{ {"type", "input_audio_buffer.commit"}};
         realtimeClient.sendEvent(evt);
-        std::cout << "Sent input_audio_buffer.commit\n";
+        cout << "Sent input_audio_buffer.commit\n";
 
         // Ask for a response
         nlohmann::json evtResponse{ {"type", "response.create"} };
         realtimeClient.sendEvent(evtResponse);
-        std::cout << "Sent response.create\n";
+        cout << "Sent response.create\n";
 
         // Sleep
-        //std::this_thread::sleep_for(std::chrono::seconds(5));
+        //this_thread::sleep_for(chrono::seconds(5));
     }
 
 private:
