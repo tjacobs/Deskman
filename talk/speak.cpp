@@ -158,6 +158,7 @@ public:
 
     // For output
     void enqueuePlayback(const std::vector<int16_t>& audioData) {
+        std::cout << "Playing " << audioData.size() << " size." << std::endl;
         std::lock_guard<std::mutex> lock(playMutex);
         playQueue.push(audioData);
         playCond.notify_one();
@@ -350,6 +351,7 @@ public:
         auto j = nlohmann::json::parse(msg, nullptr, false);
         if (j.is_discarded()) {
             // Invalid JSON
+            std::cout << "Bad JSON: " << msg << std::endl;
             return;
         }
         if (j.contains("type")) {
@@ -363,6 +365,7 @@ public:
             }
             else if (type == "response.audio.delta") {
                 // Base64 decode
+                std::cout << "Audio data" << std::endl;
                 std::string b64data = j["delta"].get<std::string>();
                 std::vector<uint8_t> audioBytes = base64Decode(b64data);
 
@@ -378,11 +381,14 @@ public:
                 std::cout << "Session created, starting playback.\n";
                 audioHandler.startPlaybackThread();
             }
+            else if (type == "session.updated") {
+                std::cout << "Event: " << j["type"] << j.dump() << std::endl;
+            }
             else if (type == "error") {
                 std::cerr << "Error event received: " << j.dump() << std::endl;
             }
             else {
-                std::cout << "Event: " << j.dump() << std::endl;
+                std::cout << "Event: " << j["type"] << /* j.dump() << */ std::endl;
             }
         }
     }
@@ -430,7 +436,7 @@ private:
 
             case LWS_CALLBACK_CLIENT_ESTABLISHED:
                 // Connection established
-                printf("Connected\n");
+                printf("Connected.\n");
                 client->onConnected();
                 break;
             case LWS_CALLBACK_CLIENT_RECEIVE:
@@ -450,11 +456,11 @@ private:
                     std::cout << msg << std::endl;
                 }
             default:
-                /*std::cout << "Other:" << std::endl;
+                std::cout << "Other:" << std::endl;
                 if (in && len > 0) {
                     std::string msg((char*)in, len);
                     std::cout << msg << std::endl;
-                }*/
+                }
                 break;
         }
         return 0;
@@ -478,8 +484,8 @@ struct lws_protocols RealtimeClient::protocols[] = {
     {
         "realtime-protocol",
         callback_openai,
-        0, // per-session data size
-        0, // rx buffer size
+        100*1024, // per-session data size
+        100*1024, // rx buffer size
     },
     { nullptr, nullptr, 0, 0 } // terminator
 };
@@ -646,6 +652,9 @@ private:
         nlohmann::json evt{ {"type", "input_audio_buffer.commit"}};
 //        realtimeClient.sendEvent(evt);
 //        std::cout << "Sent input_audio_buffer.commit\n";
+
+        // Sleep
+        std::this_thread::sleep_for(std::chrono::seconds(4));
 
         // Ask for a response
         nlohmann::json evtResponse{ {"type", "response.create"} };
