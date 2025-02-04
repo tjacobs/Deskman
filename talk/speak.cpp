@@ -158,7 +158,7 @@ public:
 
     // For output
     void enqueuePlayback(const std::vector<int16_t>& audioData) {
-        std::cout << "Playing " << audioData.size() << " size." << std::endl;
+        std::cout << "Playing " << audioData.size() << " samples." << std::endl;
         std::lock_guard<std::mutex> lock(playMutex);
         playQueue.push(audioData);
         playCond.notify_one();
@@ -231,6 +231,7 @@ private:
             playQueue.pop();
 
             // Write to PortAudio output
+            std::cout << "Writing " << front.size() << " samples." << std::endl;
             Pa_WriteStream(streamOut, front.data(), FRAMES_PER_BUFFER);
         }
         stopAudioStreamOut();
@@ -365,7 +366,6 @@ public:
             }
             else if (type == "response.audio.delta") {
                 // Base64 decode
-                std::cout << "Audio data" << std::endl;
                 std::string b64data = j["delta"].get<std::string>();
                 std::vector<uint8_t> audioBytes = base64Decode(b64data);
 
@@ -456,11 +456,11 @@ private:
                     std::cout << msg << std::endl;
                 }
             default:
-                std::cout << "Other:" << std::endl;
+                /*std::cout << "Other:" << std::endl;
                 if (in && len > 0) {
                     std::string msg((char*)in, len);
                     std::cout << msg << std::endl;
-                }
+                }*/
                 break;
         }
         return 0;
