@@ -496,13 +496,16 @@ class PorcupineWakeword {
 public:
     PorcupineWakeword(const std::vector<std::string>& keywords, float sensitivity): handle(nullptr), listening(false) {
         // Init
-        pv_status_t status; //pv_porcupine_init(
-//            PICOVOICE_KEY.c_str(), // Access key
-//            pv_porcupine_keywords::PV_KEYWORD_COMPUTER, // Example built-in keyword
-//            0,
-//            sensitivity,
-//            &handle
-//        );
+        const char* keyword_paths[] = { "Hey-robot_en_raspberry-pi_v3_0_0.ppn" };
+        float sensitivities[] = {0.5f};
+        pv_status_t status = pv_porcupine_init(
+            PICOVOICE_KEY.c_str(),
+            "porcupine_params.pv",
+            1,
+            keyword_paths,
+            sensitivities,
+            &handle
+        );
         if (status != PV_STATUS_SUCCESS) {
             std::cerr << "Failed to init Porcupine.\n";
             handle = nullptr;
