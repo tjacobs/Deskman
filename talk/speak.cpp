@@ -35,10 +35,10 @@ static const std::string INSTRUCTIONS     = "You are Deskman, a friendly home as
 static const std::vector<std::string> KEYWORDS = {"computer"};
 
 // Audio parameters
-static const PaSampleFormat AUDIO_FORMAT  = paInt16;
-static const int CHANNELS                 = 1;
+static const int FRAMES_PER_BUFFER        = 512 * 10;
 static const int SAMPLE_RATE              = 24000;
-static const int FRAMES_PER_BUFFER        = 512 * 2;
+static const int CHANNELS                 = 1;
+static const PaSampleFormat AUDIO_FORMAT  = paInt16;
 
 // -----------------------------------------------------------
 // AudioHandler
@@ -146,8 +146,7 @@ public:
 
     std::vector<int16_t> recordChunk() {
         std::vector<int16_t> chunk(FRAMES_PER_BUFFER, 0);
-        if (streamIn && isRecording)
-        {
+        if (streamIn && isRecording) {
             PaError err = Pa_ReadStream(streamIn, chunk.data(), FRAMES_PER_BUFFER);
             if (err != paNoError) {
                 // Handle error
@@ -224,9 +223,7 @@ private:
             std::vector<int16_t> front;
             std::unique_lock<std::mutex> lock(playMutex);
             playCond.wait(lock, [this]{ return !playQueue.empty() || !playbackRunning; });
-            if (!playbackRunning && playQueue.empty()) {
-                break;
-            }
+            if (!playbackRunning && playQueue.empty()) { break; }
             front = playQueue.front();
             playQueue.pop();
 
@@ -380,6 +377,10 @@ public:
                 std::cout << "Session created, starting playback.\n";
                 audioHandler.startPlaybackThread();
             }
+            else if (type == "session.updated") {
+                std::cout << "Session updated, ready.\n";
+                ready = true;
+            }
             else if (type == "error") {
                 std::cerr << "Error event received: " << j.dump() << std::endl;
             }
@@ -400,12 +401,13 @@ public:
 
     // For external usage
     AudioHandler audioHandler;
+    bool ready = false;
 
 private:
     // The libwebsockets callbacks
     static int callback_openai(struct lws* wsi, enum lws_callback_reasons reason, void* user, void* in, size_t len) {
         auto* client = reinterpret_cast<RealtimeClient*>(lws_wsi_user(wsi));
-        //printf("CALLBACK %d\n", reason);
+        //printf("Callback reason: %d\n", reason);
         switch (reason) {
             case LWS_CALLBACK_CLIENT_APPEND_HANDSHAKE_HEADER:
                 {
@@ -429,7 +431,6 @@ private:
                         p, end);
                 }
                 break;
-
             case LWS_CALLBACK_CLIENT_ESTABLISHED:
                 // Connection established
                 printf("Connected.\n");
@@ -452,11 +453,13 @@ private:
                     std::cout << msg << std::endl;
                 }
             default:
-                /*std::cout << "Other:" << std::endl;
-                if (in && len > 0) {
-                    std::string msg((char*)in, len);
-                    std::cout << msg << std::endl;
-                }*/
+                if (false) {
+                    std::cout << "Other:" << std::endl;
+                    if (in && len > 0) {
+                        std::string msg((char*)in, len);
+                        std::cout << msg << std::endl;
+                    }
+                }
                 break;
         }
         return 0;
@@ -591,7 +594,7 @@ public:
     VoiceAssistant(): realtimeClient(INSTRUCTIONS, VOICE), wakeword(KEYWORDS, 0.5f) { }
 
     void run() {
-        // Init websockets and start a thread that runs the websocket’s service loop:
+        // Init websockets and start a thread that runs the websocket’s service loop
         if (!realtimeClient.initWebSocket()) {
             std::cerr << "WebSocket init failed.\n";
             return;
@@ -607,7 +610,7 @@ public:
             startConversation();
 
             // 3. Sleep
-            std::this_thread::sleep_for(std::chrono::seconds(10));
+            std::this_thread::sleep_for(std::chrono::seconds(100));
             break;
         }
 
@@ -622,11 +625,15 @@ private:
         std::cout << "Starting conversation...\n";
 
         // Start recording from the user
-//        realtimeClient.audioHandler.startRecording();
+        realtimeClient.audioHandler.startRecording();
+
+        // Sleep until OpenAI is session.updated ready
+        while (!realtimeClient.ready) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
 
         // Send audio chunks to the OpenAI realtime API
-        if (false)
-        for (int i=0; i<50; i++) {
+        for (int i = 0; i < 20; i++) {
             // Get audio chunk
             auto chunk = realtimeClient.audioHandler.recordChunk();
             if (!chunk.empty()) {
@@ -642,15 +649,15 @@ private:
         }
 
         // Stop recording
-//        realtimeClient.audioHandler.stopRecording();
+        std::cout << "Done listening." << std::endl;
+        realtimeClient.audioHandler.stopRecording();
 
         // Commit the audio buffer
         nlohmann::json evt{ {"type", "input_audio_buffer.commit"}};
-//        realtimeClient.sendEvent(evt);
-//        std::cout << "Sent input_audio_buffer.commit\n";
+        realtimeClient.sendEvent(evt);
+        std::cout << "Sent input_audio_buffer.commit\n";
 
-        // Sleep
-        std::this_thread::sleep_for(std::chrono::seconds(4));
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
         // Ask for a response
         nlohmann::json evtResponse{ {"type", "response.create"} };
@@ -658,7 +665,7 @@ private:
         std::cout << "Sent response.create\n";
 
         // Sleep
-        std::this_thread::sleep_for(std::chrono::seconds(10));
+        std::this_thread::sleep_for(std::chrono::seconds(100));
     }
 
 private:
