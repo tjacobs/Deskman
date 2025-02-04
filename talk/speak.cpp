@@ -275,7 +275,7 @@ public:
         memset(&info, 0, sizeof info);
 
         // Only log errors and warnings
-        int logs = LLL_ERR | LLL_WARN;
+        int logs = LLL_ERR | LLL_WARN; //| LLL_INFO;
         lws_set_log_level(logs, NULL);
 
         // Use the default event loop (1 thread)
@@ -293,15 +293,14 @@ public:
         }
 
         // Connect to wss://api.openai.com/v1/realtime?model=MODEL
-        std::string path = "/v1/realtime?model=" + MODEL;
         struct lws_client_connect_info ccinfo = {0};
         ccinfo.context = context;
         ccinfo.address = "api.openai.com";
-        ccinfo.port = 443; // SSL
+        ccinfo.host = ccinfo.address;
+        ccinfo.port = 443;
+        std::string path = "/v1/realtime?model=" + MODEL;
         ccinfo.path = path.c_str();
-        ccinfo.host = lws_canonical_hostname(context);
         ccinfo.origin = "origin";
-        ccinfo.protocol = protocols[0].name;
         ccinfo.ssl_connection = LCCSCF_USE_SSL;
         ccinfo.userdata = this;
         wsi = lws_client_connect_via_info(&ccinfo);
@@ -309,7 +308,6 @@ public:
             std::cerr << "Failed to connect to server.\n";
             return false;
         }
-
         return true;
     }
 
@@ -343,7 +341,7 @@ public:
             {"session", nlohmann::json::parse(sessionConfigStr)}
         };
         sendEvent(evt);
-        printf("Sent session.update");
+        printf("Sent session.update\n");
     }
 
     // Handler for incoming messages
@@ -377,7 +375,7 @@ public:
                 std::cout << "Response generation completed.\n";
             }
             else if (type == "session.created") {
-                std::cout << "Session created.\n";
+                std::cout << "Session created, starting playback.\n";
                 audioHandler.startPlaybackThread();
             }
             else if (type == "error") {
@@ -405,12 +403,35 @@ private:
     // The libwebsockets callbacks
     static int callback_openai(struct lws* wsi, enum lws_callback_reasons reason, void* user, void* in, size_t len) {
         auto* client = reinterpret_cast<RealtimeClient*>(lws_wsi_user(wsi));
-        printf("CALLBACK %d\n", reason);
+        //printf("CALLBACK %d\n", reason);
         switch (reason) {
+            case LWS_CALLBACK_CLIENT_APPEND_HANDSHAKE_HEADER:
+                {
+                    // The 'in' is a pointer to pointer to the free space in the buffer, 'len' is how much space we have
+                    unsigned char** p = (unsigned char**) in;
+                    unsigned char* end = (*p) + len;
+
+                    // Add "Authorization: Bearer <OPENAI_API_KEY>"
+                    std::string authValue = "Bearer " + OPENAI_API_KEY;
+                    int ret = lws_add_http_header_by_name(wsi,
+                        (unsigned char*)"Authorization:",
+                        (unsigned char*)authValue.c_str(),
+                        authValue.size(),
+                        p, end);
+
+                    // Add "OpenAI-Beta: realtime=v1"
+                    ret = lws_add_http_header_by_name(wsi,
+                        (unsigned char*)"OpenAI-Beta:",
+                        (unsigned char*)"realtime=v1",
+                        strlen("realtime=v1"),
+                        p, end);
+                }
+                break;
+
             case LWS_CALLBACK_CLIENT_ESTABLISHED:
                 // Connection established
+                printf("Connected\n");
                 client->onConnected();
-                printf("CONNECTED\n");
                 break;
             case LWS_CALLBACK_CLIENT_RECEIVE:
                 // Received a message
@@ -423,15 +444,17 @@ private:
                 client->onClose();
                 break;
             case LWS_CALLBACK_CLIENT_CONNECTION_ERROR:
+                std::cout << "Connection error:" << std::endl;
                 if (in && len > 0) {
                     std::string msg((char*)in, len);
                     std::cout << msg << std::endl;
                 }
             default:
+                /*std::cout << "Other:" << std::endl;
                 if (in && len > 0) {
                     std::string msg((char*)in, len);
                     std::cout << msg << std::endl;
-                }
+                }*/
                 break;
         }
         return 0;
