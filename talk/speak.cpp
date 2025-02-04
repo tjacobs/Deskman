@@ -158,7 +158,7 @@ public:
 
     // For output
     void enqueuePlayback(const std::vector<int16_t>& audioData) {
-        std::cout << "Playing " << audioData.size() << " samples." << std::endl;
+        //std::cout << "Queuing " << audioData.size() << " samples." << std::endl;
         std::lock_guard<std::mutex> lock(playMutex);
         playQueue.push(audioData);
         playCond.notify_one();
@@ -231,8 +231,7 @@ private:
             playQueue.pop();
 
             // Write to PortAudio output
-            std::cout << "Writing " << front.size() << " samples." << std::endl;
-            Pa_WriteStream(streamOut, front.data(), FRAMES_PER_BUFFER);
+            Pa_WriteStream(streamOut, front.data(), front.size());
         }
         stopAudioStreamOut();
     }
@@ -380,9 +379,6 @@ public:
             else if (type == "session.created") {
                 std::cout << "Session created, starting playback.\n";
                 audioHandler.startPlaybackThread();
-            }
-            else if (type == "session.updated") {
-                std::cout << "Event: " << j["type"] << j.dump() << std::endl;
             }
             else if (type == "error") {
                 std::cerr << "Error event received: " << j.dump() << std::endl;
