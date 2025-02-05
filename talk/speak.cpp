@@ -33,7 +33,9 @@ using namespace std;
 // Configure
 static const string MODEL            = "gpt-4o-realtime-preview-2024-10-01";
 static const string VOICE            = "ash";
-static const string INSTRUCTIONS     = "You are Deskman, a friendly home assistance robot, with a physical appearance of a robot head and shoulders on a desk.";
+static const string INSTRUCTIONS     = 
+"""You are Deskman, a friendly home assistance robot, with a physical appearance of a robot head and shoulders on a desk.\
+Output <UP>, <DOWN>, <LEFT>, or <RIGHT> if asked to move your head in any direction.""";
 
 // Wake words
 static const vector<string> KEYWORDS = {"computer"};
@@ -43,6 +45,10 @@ static const int FRAMES_PER_BUFFER        = 512 * 10;
 static const int SAMPLE_RATE              = 24000;
 static const int CHANNELS                 = 1;
 static const PaSampleFormat AUDIO_FORMAT  = paInt16;
+
+// Functions
+void move_head(int x, int y)        { cout << "Move head: " << x << ", " << y << endl; }
+void move_face(int eyes, int smile) { cout << "Move face: " << eyes << ", " << smile << endl; }
 
 // -----------------------------------------------------------
 // AudioHandler
@@ -239,11 +245,11 @@ private:
 };
 
 // -----------------------------------------------------------
-// RealtimeClient (WebSocket connection to OpenAI Realtime API)
+// OpenAIClient (WebSocket connection to OpenAI Realtime API)
 // -----------------------------------------------------------
-class RealtimeClient {
+class OpenAIClient {
 public:
-    RealtimeClient(const string& instructions_, const string& voice_): instructions(instructions_), voice(voice_), context(nullptr), wsi(nullptr) {
+    OpenAIClient(const string& instructions_, const string& voice_): instructions(instructions_), voice(voice_), context(nullptr), wsi(nullptr) {
         // Build session config JSON
         nlohmann::json sessionConfig = {
             {"modalities", {"audio", "text"}},
@@ -263,7 +269,7 @@ public:
         sessionConfigStr = sessionConfig.dump();
     }
 
-    ~RealtimeClient() {
+    ~OpenAIClient() {
         // Clean up websockets
         if (context) {
             lws_context_destroy(context);
@@ -358,8 +364,20 @@ public:
         if (j.contains("type")) {
             string type = j["type"].get<string>();
             if (type == "response.audio_transcript.delta") {
-                cout << j["delta"].get<string>();
+                // Get this chunk of response
+                string part = j["delta"].get<string>();
+                cout << part;
                 flush(cout);
+
+                // Commands
+                if (part.find("<UP>")      != string::npos) { move_head(   0,   40); move_face( 0,  1); }
+                if (part.find("<DOWN>")    != string::npos) { move_head(   0,  -40); move_face( 0, -1); }
+                if (part.find("<LEFT>")    != string::npos) { move_head(  40,    0); move_face( 0,  0); }
+                if (part.find("<RIGHT>")   != string::npos) { move_head( -40,    0); move_face( 0,  0); }
+                if (part.find("<UP 2>")    != string::npos) { move_head( 900,    0); move_face( 5,  0); }
+                if (part.find("<DOWN 2>")  != string::npos) { move_head(-900,    0); move_face(-5,  0); }
+                if (part.find("<LEFT 2>")  != string::npos) { move_head(   0,  200); move_face( 5,  0); }
+                if (part.find("<RIGHT 2>") != string::npos) { move_head(   0, -200); move_face(-5,  0); }
             }
             else if (type == "response.audio.done") {
                 cout << endl;
@@ -376,12 +394,13 @@ public:
             }
             else if (type == "response.done") {
                 cout << "Response generation completed.\n";
+                talking = false;
             }
             else if (type == "session.created") {
                 audioHandler.startPlaybackThread();
             }
             else if (type == "session.updated") {
-                cerr << "Event: " << j.dump() << endl;
+                //cerr << "Event: " << j.dump() << endl;
                 ready = true;
             }
             else if (type == "error") {
@@ -405,11 +424,12 @@ public:
     // For external usage
     AudioHandler audioHandler;
     bool ready = false;
+    bool talking = false;
 
 private:
     // The libwebsockets callbacks
     static int callback_openai(struct lws* wsi, enum lws_callback_reasons reason, void* user, void* in, size_t len) {
-        auto* client = reinterpret_cast<RealtimeClient*>(lws_wsi_user(wsi));
+        auto* client = reinterpret_cast<OpenAIClient*>(lws_wsi_user(wsi));
         //printf("Callback reason: %d\n", reason);
         switch (reason) {
             case LWS_CALLBACK_CLIENT_APPEND_HANDSHAKE_HEADER:
@@ -481,23 +501,23 @@ private:
     string sessionConfigStr;
 };
 
-// Definition of the protocols
-struct lws_protocols RealtimeClient::protocols[] = {
+// Definition of the websocket protocols
+struct lws_protocols OpenAIClient::protocols[] = {
     {
         "realtime-protocol",
         callback_openai,
-        100*1024, // per-session data size
-        100*1024, // rx buffer size
+        100*1024, // Per-session data size
+        100*1024, // Receive buffer size
     },
-    { nullptr, nullptr, 0, 0 } // terminator
+    { nullptr, nullptr, 0, 0 } // Terminator
 };
 
 // -----------------------------------------------------------
-// PorcupineWakeword
+// Wakeword
 // -----------------------------------------------------------
-class PorcupineWakeword {
+class Wakeword {
 public:
-    PorcupineWakeword(const vector<string>& keywords, float sensitivity): handle(nullptr), listening(false) {
+    Wakeword(const vector<string>& keywords): handle(nullptr), listening(false) {
         // Init
         const char* keyword_paths[] = { "computer_mac.ppn" };
         float sensitivities[] = {0.5f};
@@ -515,7 +535,7 @@ public:
         }
     }
 
-    ~PorcupineWakeword() {
+    ~Wakeword() {
         if (handle) {
             pv_porcupine_delete(handle);
         }
@@ -557,16 +577,10 @@ public:
             // Read data
             vector<int16_t> buffer(pv_porcupine_frame_length());
             err = Pa_ReadStream(stream, buffer.data(), pv_porcupine_frame_length());
-            if (err != paNoError) {
-                // Handle error
-                continue;
-            }
+            if (err != paNoError) { continue; }
             int32_t keyword_index = -1;
             pv_status_t status = pv_porcupine_process(handle, buffer.data(), &keyword_index);
-            if (status != PV_STATUS_SUCCESS) {
-                // Handle error
-                continue;
-            }
+            if (status != PV_STATUS_SUCCESS) { continue; }
 
             // Detected?
             if (keyword_index >= 0) {
@@ -596,15 +610,15 @@ private:
 // -----------------------------------------------------------
 class VoiceAssistant {
 public:
-    VoiceAssistant(): realtimeClient(INSTRUCTIONS, VOICE), wakeword(KEYWORDS, 0.5f) { }
+    VoiceAssistant(): openAIClient(INSTRUCTIONS, VOICE), wakeword(KEYWORDS) { }
 
     void run() {
         // Init websockets and start a thread that runs the websocket’s service loop
-        if (!realtimeClient.initWebSocket()) {
+        if (!openAIClient.initWebSocket()) {
             cerr << "WebSocket init failed.\n";
             return;
         }
-        thread wsThread([this] { realtimeClient.serviceLoop(); });
+        thread wsThread([this] { openAIClient.serviceLoop(); });
 
         // Sleep
         this_thread::sleep_for(chrono::seconds(2));
@@ -618,13 +632,13 @@ public:
             startConversation();
 
             // 3. Sleep
-            //this_thread::sleep_for(chrono::seconds(10));
+            this_thread::sleep_for(chrono::seconds(1));
         }
 
         // Clean up
-        realtimeClient.close();
+        openAIClient.close();
         if (wsThread.joinable()) { wsThread.join(); }
-        realtimeClient.audioHandler.cleanup();
+        openAIClient.audioHandler.cleanup();
     }
 
 private:
@@ -632,17 +646,17 @@ private:
         cout << "Starting conversation...\n";
 
         // Start recording from the user
-        realtimeClient.audioHandler.startRecording();
+        openAIClient.audioHandler.startRecording();
 
         // Sleep until OpenAI is session.updated ready
-        while (!realtimeClient.ready) {
+        while (!openAIClient.ready) {
             this_thread::sleep_for(chrono::milliseconds(100));
         }
 
         // Send audio chunks to the OpenAI realtime API
         for (int i = 0; i < 20; i++) {
             // Get audio chunk
-            auto chunk = realtimeClient.audioHandler.recordChunk();
+            auto chunk = openAIClient.audioHandler.recordChunk();
             if (!chunk.empty()) {
                 cout << "Listening... " << i << endl; //<< " frames read: " << chunk.size() << endl;
 
@@ -651,31 +665,32 @@ private:
 
                 // Send to OpenAI
                 nlohmann::json evt{ {"type",  "input_audio_buffer.append"}, {"audio", b64chunk} };
-                realtimeClient.sendEvent(evt);
+                openAIClient.sendEvent(evt);
             }
         }
 
         // Stop recording
         cout << "Done listening." << endl;
-        realtimeClient.audioHandler.stopRecording();
+        openAIClient.audioHandler.stopRecording();
 
         // Commit the audio buffer
         nlohmann::json evt{ {"type", "input_audio_buffer.commit"}};
-        realtimeClient.sendEvent(evt);
+        openAIClient.sendEvent(evt);
         cout << "Sent input_audio_buffer.commit\n";
 
         // Ask for a response
         nlohmann::json evtResponse{ {"type", "response.create"} };
-        realtimeClient.sendEvent(evtResponse);
+        openAIClient.sendEvent(evtResponse);
         cout << "Sent response.create\n";
 
-        // Sleep
-        //this_thread::sleep_for(chrono::seconds(5));
+        // Sleep until OpenAI is done
+        openAIClient.talking = true;
+        while (openAIClient.talking) { this_thread::sleep_for(chrono::milliseconds(100)); }
     }
 
 private:
-    RealtimeClient realtimeClient;
-    PorcupineWakeword wakeword;
+    OpenAIClient openAIClient;
+    Wakeword wakeword;
 };
 
 // -----------------------------------------------------------
