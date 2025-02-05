@@ -412,6 +412,17 @@ public:
                 cout << endl;
                 response.clear();
             }
+            else if (type == "response.function_call_arguments.done") {
+                // Parse the complete function arguments
+                auto args = json::parse(j["arguments"].get<string>());
+                string funcName = j["name"].get<string>();
+                
+                // Call the corresponding C function
+                if (funcName == "generate_horoscope") {
+                    string sign = args["sign"].get<string>();
+                    generate_horoscope(sign);
+                }
+            }
             else if (type == "response.audio.delta") {
                 // Base64 decode
                 string b64data = j["delta"].get<string>();
@@ -449,6 +460,14 @@ public:
 
     void close() {
         stopRequested = true;
+    }
+
+    // Function
+    string generate_horoscope(string sign) {
+        string horoscope = "Today's horoscope for " + sign + ": ";
+        horoscope += "The stars align in your favor. Take bold steps forward with confidence.";
+        cout << horoscope << endl;
+        return horoscope;
     }
 
     // For external usage
