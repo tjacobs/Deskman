@@ -50,6 +50,12 @@ static const PaSampleFormat AUDIO_FORMAT  = paInt16;
 // Functions
 void move_head(int x, int y)        { cout << endl << "Move head: " << x << ", " << y << endl; }
 void move_face(int eyes, int smile) { cout << "Move face: " << eyes << ", " << smile << endl; }
+void move_head(string direction) {
+    if      (direction == "Up")    move_head(  0,  40);
+    else if (direction == "Down")  move_head(  0, -40);
+    else if (direction == "Left")  move_head( 40,   0);
+    else if (direction == "Right") move_head(-40,   0);
+}
 
 // -----------------------------------------------------------
 // AudioHandler
@@ -249,6 +255,9 @@ private:
 // OpenAIClient (WebSocket connection to OpenAI Realtime API)
 // -----------------------------------------------------------
 class OpenAIClient {
+
+    vector<string> functions = {"move_head", "move_face"};
+
 public:
     OpenAIClient(const string& instructions_, const string& voice_): instructions(instructions_), voice(voice_), context(nullptr), wsi(nullptr) {
         // Build session config JSON
@@ -267,31 +276,23 @@ public:
             {"tools", {
                 {
                     {"type", "function"},
-                    {"name", "generate_horoscope"},
-                    {"description", "Give today's horoscope for an astrological sign."},
+                    {"name", functions[0]},
+                    {"description", "Move your head to point more left, right, up, or down, to look in a direction."},
                     {"parameters", {
                         {"type", "object"},
                         {"properties", {
-                            {"sign", {
+                            {"direction", {
                                 {"type", "string"},
-                                {"description", "The sign for the horoscope."},
+                                {"description", "The direction to move."},
                                 {"enum", {
-                                    "Aries",
-                                    "Taurus", 
-                                    "Gemini",
-                                    "Cancer",
-                                    "Leo",
-                                    "Virgo",
-                                    "Libra", 
-                                    "Scorpio",
-                                    "Sagittarius",
-                                    "Capricorn",
-                                    "Aquarius",
-                                    "Pisces"
+                                    "Up",
+                                    "Down", 
+                                    "Left",
+                                    "Right"
                                 }}
                             }}
                         }},
-                        {"required", {"sign"}}
+                        {"required", {"direction"}}
                     }}
                 }
             }},
@@ -404,7 +405,7 @@ public:
                 flush(cout);
 
                 // Commands
-                if (response.find("<UP>")      != string::npos) { move_head(   0,   40); move_face( 0,  1); response.clear(); }
+                /*if (response.find("<UP>")      != string::npos) { move_head(   0,   40); move_face( 0,  1); response.clear(); }
                 if (response.find("<DOWN>")    != string::npos) { move_head(   0,  -40); move_face( 0, -1); response.clear(); }
                 if (response.find("<LEFT>")    != string::npos) { move_head(  40,    0); move_face( 0,  0); response.clear(); }
                 if (response.find("<RIGHT>")   != string::npos) { move_head( -40,    0); move_face( 0,  0); response.clear(); }
@@ -412,6 +413,7 @@ public:
                 if (response.find("<DOWN 2>")  != string::npos) { move_head(-900,    0); move_face(-5,  0); response.clear(); }
                 if (response.find("<LEFT 2>")  != string::npos) { move_head(   0,  200); move_face( 5,  0); response.clear(); }
                 if (response.find("<RIGHT 2>") != string::npos) { move_head(   0, -200); move_face(-5,  0); response.clear(); }
+                */
             }
             else if (type == "response.audio.done") {
                 cout << endl;
@@ -420,12 +422,12 @@ public:
             else if (type == "response.function_call_arguments.done") {
                 // Parse the complete function arguments
                 auto args = json::parse(j["arguments"].get<string>());
-                string funcName = j["name"].get<string>();
+                string function = j["name"].get<string>();
                 
-                // Call the corresponding C function
-                if (funcName == "generate_horoscope") {
-                    string sign = args["sign"].get<string>();
-                    generate_horoscope(sign);
+                // Call the corresponding function
+                if (function == functions[0]) {
+                    string direction = args["direction"].get<string>();
+                    move_head(direction);
                 }
             }
             else if (type == "response.audio.delta") {
