@@ -29,6 +29,7 @@
 // Configuration
 // -----------------------------------------------------------
 using namespace std;
+using namespace nlohmann;
 
 // Configure
 static const string MODEL            = "gpt-4o-realtime-preview-2024-10-01";
@@ -80,21 +81,21 @@ public:
         PaError err = Pa_OpenStream(
             &streamIn,
             &inputParameters,
-            nullptr, // no output
+            nullptr,
             SAMPLE_RATE,
             FRAMES_PER_BUFFER,
             paClipOff,
-            nullptr, // no callback, we use blocking read
+            nullptr,
             nullptr
         );
-        if(err != paNoError) {
+        if (err != paNoError) {
             cerr << "Pa_OpenStream input failed: " << Pa_GetErrorText(err) << endl;
             return false;
         }
 
         // Start stream
         err = Pa_StartStream(streamIn);
-        if(err != paNoError) {
+        if (err != paNoError) {
             cerr << "Pa_StartStream input failed: " << Pa_GetErrorText(err) << endl;
             return false;
         }
@@ -118,12 +119,12 @@ public:
         // Open stream
         PaError err = Pa_OpenStream(
             &streamOut,
-            nullptr, // no input
+            nullptr,
             &outputParameters,
             SAMPLE_RATE,
             FRAMES_PER_BUFFER,
             paClipOff,
-            nullptr, // no callback, we use blocking write
+            nullptr,
             nullptr
         );
         if (err != paNoError) {
@@ -133,7 +134,7 @@ public:
 
         // Start stream
         err = Pa_StartStream(streamOut);
-        if(err != paNoError) {
+        if (err != paNoError) {
             cerr << "Pa_StartStream output failed: " << Pa_GetErrorText(err) << endl;
             return false;
         }
@@ -251,7 +252,7 @@ class OpenAIClient {
 public:
     OpenAIClient(const string& instructions_, const string& voice_): instructions(instructions_), voice(voice_), context(nullptr), wsi(nullptr) {
         // Build session config JSON
-        nlohmann::json sessionConfig = {
+        json sessionConfig = {
             {"modalities", {"audio", "text"}},
             {"instructions", instructions},
             {"voice", voice},
@@ -329,7 +330,7 @@ public:
     }
 
     // Send a JSON event
-    void sendEvent(const nlohmann::json& event) {
+    void sendEvent(const json& event) {
         // Get mutex and payload
         lock_guard<mutex> lock(writeMutex);
         string payload = event.dump();
@@ -345,9 +346,9 @@ public:
 
     // Called once the connection is established, we send "session.update"
     void onConnected() {
-        nlohmann::json evt{
+        json evt{
             {"type", "session.update"},
-            {"session", nlohmann::json::parse(sessionConfigStr)}
+            {"session", json::parse(sessionConfigStr)}
         };
         sendEvent(evt);
     }
@@ -355,7 +356,7 @@ public:
     // Handler for incoming messages
     void onMessage(const string& msg) {
         // Parse JSON
-        auto j = nlohmann::json::parse(msg, nullptr, false);
+        auto j = json::parse(msg, nullptr, false);
         if (j.is_discarded()) {
             // Invalid JSON
             cout << "Bad JSON: " << msg << endl;
@@ -667,7 +668,7 @@ private:
                 string b64chunk = base64Encode(reinterpret_cast<const uint8_t*>(chunk.data()), chunk.size()*sizeof(int16_t));
 
                 // Send to OpenAI
-                nlohmann::json evt{ {"type",  "input_audio_buffer.append"}, {"audio", b64chunk} };
+                json evt{ {"type",  "input_audio_buffer.append"}, {"audio", b64chunk} };
                 openAIClient.sendEvent(evt);
             }
         }
@@ -677,12 +678,12 @@ private:
         openAIClient.audioHandler.stopRecording();
 
         // Commit the audio buffer
-        nlohmann::json evt{ {"type", "input_audio_buffer.commit"}};
+        json evt{ {"type", "input_audio_buffer.commit"}};
         openAIClient.sendEvent(evt);
         cout << "Sent input_audio_buffer.commit\n";
 
         // Ask for a response
-        nlohmann::json evtResponse{ {"type", "response.create"} };
+        json evtResponse{ {"type", "response.create"} };
         openAIClient.sendEvent(evtResponse);
         cout << "Sent response.create\n";
 
