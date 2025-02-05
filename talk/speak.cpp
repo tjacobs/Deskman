@@ -35,7 +35,7 @@ using namespace nlohmann;
 static const string MODEL            = "gpt-4o-realtime-preview-2024-10-01";
 static const string VOICE            = "ash";
 static const string INSTRUCTIONS     = 
-"""You are Deskman, a friendly home assistance robot, with a physical appearance of a robot head and shoulders on a desk.\
+"""You are Deskman, a friendly home assistance robot, with a physical appearance of a robot head and shoulders on a desk. \
 Output <UP>, <DOWN>, <LEFT>, or <RIGHT> if asked to move your head in any direction.""";
 
 // Wake words
@@ -258,12 +258,39 @@ public:
             {"voice", voice},
             {"input_audio_format", "pcm16"},
             {"output_audio_format", "pcm16"},
-            {"turn_detection", {/*
-                {"type", "server_vad"},
-                {"threshold", 0.5},
-                {"prefix_padding_ms", 300},
-                {"silence_duration_ms", 600}
-            */}},
+            {"turn_detection", {}},
+            {"tools", {
+                {
+                    {"type", "function"},
+                    {"name", "generate_horoscope"},
+                    {"description", "Give today's horoscope for an astrological sign."},
+                    {"parameters", {
+                        {"type", "object"},
+                        {"properties", {
+                            {"sign", {
+                                {"type", "string"},
+                                {"description", "The sign for the horoscope."},
+                                {"enum", {
+                                    "Aries",
+                                    "Taurus", 
+                                    "Gemini",
+                                    "Cancer",
+                                    "Leo",
+                                    "Virgo",
+                                    "Libra", 
+                                    "Scorpio",
+                                    "Sagittarius",
+                                    "Capricorn",
+                                    "Aquarius",
+                                    "Pisces"
+                                }}
+                            }}
+                        }},
+                        {"required", {"sign"}}
+                    }}
+                }
+            }},
+            {"tool_choice", "auto"},
             {"input_audio_transcription", {{"model", "whisper-1"}}},
             {"temperature", 0.6}
         };
