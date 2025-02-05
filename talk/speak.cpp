@@ -47,7 +47,7 @@ static const int CHANNELS                 = 1;
 static const PaSampleFormat AUDIO_FORMAT  = paInt16;
 
 // Functions
-void move_head(int x, int y)        { cout << "Move head: " << x << ", " << y << endl; }
+void move_head(int x, int y)        { cout << endl << "Move head: " << x << ", " << y << endl; }
 void move_face(int eyes, int smile) { cout << "Move face: " << eyes << ", " << smile << endl; }
 
 // -----------------------------------------------------------
@@ -366,21 +366,23 @@ public:
             if (type == "response.audio_transcript.delta") {
                 // Get this chunk of response
                 string part = j["delta"].get<string>();
-                cout << part;
+                cout << "[" << part << "]";
+                response += part;
                 flush(cout);
 
                 // Commands
-                if (part.find("<UP>")      != string::npos) { move_head(   0,   40); move_face( 0,  1); }
-                if (part.find("<DOWN>")    != string::npos) { move_head(   0,  -40); move_face( 0, -1); }
-                if (part.find("<LEFT>")    != string::npos) { move_head(  40,    0); move_face( 0,  0); }
-                if (part.find("<RIGHT>")   != string::npos) { move_head( -40,    0); move_face( 0,  0); }
-                if (part.find("<UP 2>")    != string::npos) { move_head( 900,    0); move_face( 5,  0); }
-                if (part.find("<DOWN 2>")  != string::npos) { move_head(-900,    0); move_face(-5,  0); }
-                if (part.find("<LEFT 2>")  != string::npos) { move_head(   0,  200); move_face( 5,  0); }
-                if (part.find("<RIGHT 2>") != string::npos) { move_head(   0, -200); move_face(-5,  0); }
+                if (response.find("<UP>")      != string::npos) { move_head(   0,   40); move_face( 0,  1); response.clear(); }
+                if (response.find("<DOWN>")    != string::npos) { move_head(   0,  -40); move_face( 0, -1); response.clear(); }
+                if (response.find("<LEFT>")    != string::npos) { move_head(  40,    0); move_face( 0,  0); response.clear(); }
+                if (response.find("<RIGHT>")   != string::npos) { move_head( -40,    0); move_face( 0,  0); response.clear(); }
+                if (response.find("<UP 2>")    != string::npos) { move_head( 900,    0); move_face( 5,  0); response.clear(); }
+                if (response.find("<DOWN 2>")  != string::npos) { move_head(-900,    0); move_face(-5,  0); response.clear(); }
+                if (response.find("<LEFT 2>")  != string::npos) { move_head(   0,  200); move_face( 5,  0); response.clear(); }
+                if (response.find("<RIGHT 2>") != string::npos) { move_head(   0, -200); move_face(-5,  0); response.clear(); }
             }
             else if (type == "response.audio.done") {
                 cout << endl;
+                response.clear();
             }
             else if (type == "response.audio.delta") {
                 // Base64 decode
@@ -425,6 +427,7 @@ public:
     AudioHandler audioHandler;
     bool ready = false;
     bool talking = false;
+    string response;
 
 private:
     // The libwebsockets callbacks
