@@ -67,7 +67,7 @@ void move_head(string direction) {
 class AudioHandler {
 public:
     AudioHandler(): streamIn(nullptr), streamOut(nullptr), isRecording(false) {
-        Pa_Initialize();
+        //Pa_Initialize();
     }
 
     ~AudioHandler() {
@@ -331,6 +331,7 @@ public:
         info.gid = -1;
         info.uid = -1;
         info.options = LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT;
+        info.client_ssl_ca_filepath = "/etc/ssl/certs/ca-certificates.crt";
 
         // Create
         context = lws_create_context(&info);
@@ -393,6 +394,7 @@ public:
     // Handler for incoming messages
     void onMessage(const string& msg) {
         // Parse JSON
+        //cout << msg << endl;
         auto j = json::parse(msg, nullptr, false);
         if (j.is_discarded()) {
             // Invalid JSON
@@ -449,7 +451,7 @@ public:
                 talking = false;
             }
             else if (type == "session.created") {
-                audioHandler.startPlaybackThread();
+                //audioHandler.startPlaybackThread();
             }
             else if (type == "session.updated") {
                 //cerr << "Event: " << j.dump() << endl;
@@ -466,19 +468,11 @@ public:
 
     // Called on close
     void onClose() {
-        cout << "WebSocket closed.\n";
+        cout << "Websocket closed.\n";
     }
 
     void close() {
         stopRequested = true;
-    }
-
-    // Function
-    string generate_horoscope(string sign) {
-        string horoscope = "Today's horoscope for " + sign + ": ";
-        horoscope += "The stars align in your favor. Take bold steps forward with confidence.";
-        cout << horoscope << endl;
-        return horoscope;
     }
 
     // For external usage
@@ -580,7 +574,8 @@ class Wakeword {
 public:
     Wakeword(const vector<string>& keywords): handle(nullptr), listening(false) {
         // Init
-        const char* keyword_paths[] = { "computer_mac.ppn" };
+        //const char* keyword_paths[] = { "computer_mac.ppn" };
+        const char* keyword_paths[] = { "hey_robot_pi.ppn" };
         float sensitivities[] = {0.5f};
         pv_status_t status = pv_porcupine_init(
             PICOVOICE_KEY.c_str(),
@@ -591,7 +586,8 @@ public:
             &handle
         );
         if (status != PV_STATUS_SUCCESS) {
-            cerr << "Failed to init Porcupine wake word.\n";
+            const char *error_message = pv_status_to_string(status);
+            cerr << "Failed to init Porcupine wake word: " << error_message << endl;
             handle = nullptr;
         }
     }
@@ -687,7 +683,7 @@ public:
         // The main loop: wait for wake word, then capture audio, send to OpenAI, etc.
         while (true) {
             // 1. Block waiting for wake word
-            wakeword.listen();
+            //wakeword.listen();
 
             // 2. Start conversation
             startConversation();
@@ -707,7 +703,7 @@ private:
         cout << "Starting conversation...\n";
 
         // Start recording from the user
-        openAIClient.audioHandler.startRecording();
+        //openAIClient.audioHandler.startRecording();
 
         // Sleep until OpenAI is session.updated ready
         while (!openAIClient.ready) {
