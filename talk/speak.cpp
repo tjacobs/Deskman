@@ -2,10 +2,12 @@
 // Thomas Jacobs
 
 #include <queue>
+#include <mutex>
 #include <string>
 #include <vector>
 #include <thread>
 #include <iostream>
+#include <condition_variable>
 
 // JSON
 #include <nlohmann/json.hpp>
@@ -32,6 +34,8 @@ using namespace std;
 using namespace nlohmann;
 
 // Configure
+static const string OPENAI_KEY       = OPENAI_KEY_DEFINE;
+static const string PICOVOICE_KEY    = PICOVOICE_KEY_DEFINE;
 static const string MODEL            = "gpt-4o-realtime-preview-2024-10-01";
 static const string VOICE            = "ash";
 static const string INSTRUCTIONS     = 
@@ -495,8 +499,8 @@ private:
                     unsigned char** p = (unsigned char**) in;
                     unsigned char* end = (*p) + len;
 
-                    // Add "Authorization: Bearer <OPENAI_API_KEY>"
-                    string authValue = "Bearer " + OPENAI_API_KEY;
+                    // Add "Authorization: Bearer <OPENAI_KEY>"
+                    string authValue = "Bearer " + OPENAI_KEY;
                     int ret = lws_add_http_header_by_name(wsi,
                         (unsigned char*)"Authorization:",
                         (unsigned char*)authValue.c_str(),
@@ -659,7 +663,7 @@ public:
 
 private:
     pv_porcupine_t* handle;
-    atomic<bool> listening;
+    bool listening;
 };
 
 // -----------------------------------------------------------
