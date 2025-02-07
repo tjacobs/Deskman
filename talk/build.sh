@@ -5,3 +5,5 @@ g++ speak.cpp -o speak -std=c++11 \
 	-lpv_porcupine -Llib \
 	-lwebsockets -Llib 
 
+# Run "source build.sh" to set this
+export LD_LIBRARY_PATH=./lib
