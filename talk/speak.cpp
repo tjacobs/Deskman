@@ -94,6 +94,7 @@ public:
         return openAudioInput() && openAudioOutput();
     }
 
+    // ALSA
     #ifdef ALSA
     static const snd_pcm_format_t AUDIO_FORMAT = SND_PCM_FORMAT_S16_LE;
 
@@ -183,44 +184,207 @@ public:
         }
     }
 
+    void startPlaybackThread() { }
+
 private:
     snd_pcm_t *capture_handle;
     snd_pcm_t *playback_handle;
 
     #else
-        
+
+    // PortAudio
+    static const PaSampleFormat AUDIO_FORMAT  = paInt16;
+
     bool openAudioInput() {
+        // Init PortAudio
+        Pa_Initialize();
+
+        // Check already open
+        if (streamIn) return true;
+
+        // Params
+        PaStreamParameters inputParameters;
+        memset(&inputParameters, 0, sizeof(inputParameters));
+        inputParameters.device = Pa_GetDefaultInputDevice();
+        inputParameters.channelCount = CHANNELS;
+        inputParameters.sampleFormat = AUDIO_FORMAT;
+        inputParameters.suggestedLatency = Pa_GetDeviceInfo(inputParameters.device)->defaultLowInputLatency;
+        inputParameters.hostApiSpecificStreamInfo = nullptr;
+
+        // Open stream
+        PaError err = Pa_OpenStream(
+            &streamIn,
+            &inputParameters,
+            nullptr,
+            SAMPLE_RATE,
+            FRAMES_PER_BUFFER,
+            paClipOff,
+            nullptr,
+            nullptr
+        );
+        if (err != paNoError) {
+            cerr << "Pa_OpenStream input failed: " << Pa_GetErrorText(err) << endl;
+            return false;
+        }
+
+        // Start stream
+        err = Pa_StartStream(streamIn);
+        if (err != paNoError) {
+            cerr << "Pa_StartStream input failed: " << Pa_GetErrorText(err) << endl;
+            return false;
+        }
 
         return true;
     }
 
     bool openAudioOutput() {
+        // Check already open
+        if (streamOut) return true;
+
+        // Params
+        PaStreamParameters outputParameters;
+        memset(&outputParameters, 0, sizeof(outputParameters));
+        outputParameters.device = Pa_GetDefaultOutputDevice();
+        outputParameters.channelCount = CHANNELS;
+        outputParameters.sampleFormat = AUDIO_FORMAT;
+        outputParameters.suggestedLatency = Pa_GetDeviceInfo(outputParameters.device)->defaultLowOutputLatency;
+        outputParameters.hostApiSpecificStreamInfo = nullptr;
+
+        // Open stream
+        PaError err = Pa_OpenStream(
+            &streamOut,
+            nullptr,
+            &outputParameters,
+            SAMPLE_RATE,
+            FRAMES_PER_BUFFER,
+            paClipOff,
+            nullptr,
+            nullptr
+        );
+        if (err != paNoError) {
+            cerr << "Pa_OpenStream output failed: " << Pa_GetErrorText(err) << endl;
+            return false;
+        }
+
+        // Start stream
+        err = Pa_StartStream(streamOut);
+        if (err != paNoError) {
+            cerr << "Pa_StartStream output failed: " << Pa_GetErrorText(err) << endl;
+            return false;
+        }
 
         return true;
     }
 
+    void startRecording() {
+        isRecording = true;
+        audioBuffer.clear();
+        if (!openAudioInput()) {
+            cerr << "Cannot open input stream for recording." << endl;
+        }
+    }
+
+    // Record a chunk of audio data, returns a vector of int16_t samples
     vector<int16_t> recordChunk() {
         vector<int16_t> chunk(FRAMES_PER_BUFFER, 0);
-        this_thread::sleep_for(chrono::seconds(1));
-        cout << "Fake record" << endl;
+        if (streamIn && isRecording) {
+            PaError err = Pa_ReadStream(streamIn, chunk.data(), FRAMES_PER_BUFFER);
+            if (err != paNoError) {
+                // Handle error
+            }
+        }
+        else cout << "Not recording. " << endl;
         return chunk;
     }
 
-    void playChunk(const vector<int16_t>& data) {
+    void startPlaybackThread() {
+        if (!playThread.joinable()) {
+            playThread = thread(&AudioHandler::playLoop, this);
+        }
+    }
 
+    void stopPlaybackThread() {
+        lock_guard<mutex> lock(playMutex);
+        playbackRunning = false;
+        playCond.notify_one();
+        if (playThread.joinable()) {
+            playThread.join();
+        }
+    }
+
+    void playChunk(const vector<int16_t>& audioData) {
+        //cout << "Queuing " << audioData.size() << " samples." << endl;
+        lock_guard<mutex> lock(playMutex);
+        playQueue.push(audioData);
+        playCond.notify_one();
     }
 
     void stopRecording() {
-
+        isRecording = false;
+        stopAudioStreamIn();
     }
 
     void cleanup() {
+        stopAudioStreamIn();
+        stopAudioStreamOut();
+        stopPlaybackThread();
+        Pa_Terminate();
+    }
 
+    void stopAudioStreamIn() {
+        if (streamIn) {
+            Pa_StopStream(streamIn);
+            Pa_CloseStream(streamIn);
+            streamIn = nullptr;
+        }
+    }
+
+    void stopAudioStreamOut() {
+        if (streamOut) {
+            Pa_StopStream(streamOut);
+            Pa_CloseStream(streamOut);
+            streamOut = nullptr;
+        }
+    }
+
+    void playLoop() {
+        // Start
+        if (!openAudioOutput()) {
+            cerr << "Failed to open output audio stream.\n";
+            return;
+        }
+        while (true) {
+            vector<int16_t> front;
+            unique_lock<mutex> lock(playMutex);
+            playCond.wait(lock, [this]{ return !playQueue.empty() || !playbackRunning; });
+            if (!playbackRunning && playQueue.empty()) { break; }
+            front = playQueue.front();
+            playQueue.pop();
+
+            // Write to PortAudio output
+            Pa_WriteStream(streamOut, front.data(), front.size());
+        }
+        stopAudioStreamOut();
     }
 
 private:
     int *capture_handle;
     int *playback_handle;
+
+    // Streams
+    PaStream* streamIn;
+    PaStream* streamOut;
+
+    // Flag
+    bool isRecording;
+
+    // Playback
+    thread playThread;
+    vector<int16_t> audioBuffer;
+    queue<vector<int16_t>> playQueue;
+    mutex playMutex;
+    condition_variable playCond;
+    bool playbackRunning = true;
 
     #endif
 };
@@ -419,7 +583,6 @@ public:
                 // Convert to int16_t for playback
                 vector<int16_t> samples(audioBytes.size() / 2);
                 memcpy(samples.data(), audioBytes.data(), audioBytes.size());
-                //audioHandler.enqueuePlayback(samples);
 
                 // Play
                 audioHandler.playChunk(samples);
@@ -429,7 +592,7 @@ public:
                 talking = false;
             }
             else if (type == "session.created") {
-                //audioHandler.startPlaybackThread();
+                audioHandler.startPlaybackThread();
             }
             else if (type == "session.updated") {
                 if (DEBUG) cout << "Event: " << j.dump() << endl;
@@ -699,6 +862,9 @@ private:
             this_thread::sleep_for(chrono::milliseconds(100));
         }
 
+        // Start mic
+        openAIClient.audioHandler.startRecording();
+
         // Send audio chunks to the OpenAI realtime API
         for (int i = 0; i < 30; i++) {
             // Get audio chunk
@@ -713,12 +879,14 @@ private:
                 json event{ {"type",  "input_audio_buffer.append"}, {"audio", b64chunk} };
                 openAIClient.sendEvent(event);
 
+                // Throttle sending
                 this_thread::sleep_for(chrono::milliseconds(100));
             }
         }
 
         // Stop recording
         cout << "Done listening." << endl;
+        openAIClient.audioHandler.stopRecording();
 
         // Commit the audio buffer
         json event{ {"type", "input_audio_buffer.commit"} };
