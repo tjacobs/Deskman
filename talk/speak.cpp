@@ -150,7 +150,9 @@ public:
             if (framesRead < 0) {
                 // Try to recover
                 snd_pcm_recover(capture_handle, (int)framesRead, 0);
+
                 // Return an empty chunk if we can't read
+                cerr << "Error recording. " << endl;
             }
         }
         return chunk;
@@ -769,7 +771,6 @@ public:
             // Read data
             auto chunk = audioHandler.recordChunk(pv_porcupine_frame_length());
             if (!chunk.empty()) {
-//                cout << "Got chunk" << endl;
                 int32_t keyword_index = -1;
                 pv_status_t status = pv_porcupine_process(handle, chunk.data(), &keyword_index);
                 if (status != PV_STATUS_SUCCESS) { cout << "Error" << endl; continue; }
