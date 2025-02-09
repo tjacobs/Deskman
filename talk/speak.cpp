@@ -5,15 +5,17 @@
 #include <mutex>
 #include <string>
 #include <vector>
+#include <chrono>
 #include <thread>
 #include <iostream>
 #include <condition_variable>
 
+#ifdef ALSA
+#include <alsa/asoundlib.h>
+#endif
+
 // JSON
 #include <nlohmann/json.hpp>
-
-// PortAudio
-#include "portaudio.h"
 
 // Picovoice Porcupine
 #include "pv_porcupine.h"
@@ -27,34 +29,41 @@
 // Keys
 #include "keys.h"
 
-// -----------------------------------------------------------
-// Configuration
-// -----------------------------------------------------------
 using namespace std;
 using namespace nlohmann;
 
-// Configure
+// -----------------------------------------------------------
+// Configuration
+// -----------------------------------------------------------
+
 static const string OPENAI_KEY       = OPENAI_KEY_DEFINE;
 static const string PICOVOICE_KEY    = PICOVOICE_KEY_DEFINE;
 static const string MODEL            = "gpt-4o-realtime-preview-2024-10-01";
 static const string VOICE            = "ash";
-static const string INSTRUCTIONS     = 
-"""You are Deskman, a friendly home assistance robot, with a physical appearance of a robot head and shoulders on a desk. \
-Output <UP>, <DOWN>, <LEFT>, or <RIGHT> if asked to move your head in any direction.""";
+static const string INSTRUCTIONS     =
+    """You are Deskman, a friendly home assistance robot, with a physical appearance of a robot head and shoulders on a desk.\n"\
+    "Output <UP>, <DOWN>, <LEFT>, or <RIGHT> if asked to move your head in any direction.""";
 
 // Wake words
 static const vector<string> KEYWORDS = {"computer"};
 
 // Audio parameters
-static const int FRAMES_PER_BUFFER        = 512 * 10;
-static const int SAMPLE_RATE              = 24000;
-static const int CHANNELS                 = 1;
-static const PaSampleFormat AUDIO_FORMAT  = paInt16;
+static const int SAMPLE_RATE = 24000;
+static const int CHANNELS    = 1;
+static const int FRAMES_PER_BUFFER = 512 * 10;
 
-// Functions
-void move_head(int x, int y)        { cout << endl << "Move head: " << x << ", " << y << endl; }
-void move_face(int eyes, int smile) { cout << "Move face: " << eyes << ", " << smile << endl; }
-void move_head(string direction) {
+// -----------------------------------------------------------
+// Utility functions for movement
+// -----------------------------------------------------------
+void move_head(int x, int y) {
+    cout << "\nMove head: " << x << ", " << y << endl;
+}
+
+void move_face(int eyes, int smile) {
+    cout << "Move face: " << eyes << ", " << smile << endl;
+}
+
+void move_head(const string &direction) {
     if      (direction == "Up")    move_head(  0,  40);
     else if (direction == "Down")  move_head(  0, -40);
     else if (direction == "Left")  move_head( 40,   0);
@@ -62,207 +71,161 @@ void move_head(string direction) {
 }
 
 // -----------------------------------------------------------
-// AudioHandler
+// AudioHandler using ALSA
 // -----------------------------------------------------------
 class AudioHandler {
 public:
-    AudioHandler(): streamIn(nullptr), streamOut(nullptr), isRecording(false) {
-        //Pa_Initialize();
+    AudioHandler() : capture_handle(nullptr), playback_handle(nullptr) {
+        initAudio();
     }
 
     ~AudioHandler() {
         cleanup();
     }
 
-    bool startAudioStreamIn() {
-        // Check already open
-        if (streamIn) return true;
+    // Initialize both input and output devices
+    bool initAudio() {
+        return openAudioInput() && openAudioOutput();
+    }
 
-        // Params
-        PaStreamParameters inputParameters;
-        memset(&inputParameters, 0, sizeof(inputParameters));
-        inputParameters.device = Pa_GetDefaultInputDevice();
-        inputParameters.channelCount = CHANNELS;
-        inputParameters.sampleFormat = AUDIO_FORMAT;
-        inputParameters.suggestedLatency = Pa_GetDeviceInfo(inputParameters.device)->defaultLowInputLatency;
-        inputParameters.hostApiSpecificStreamInfo = nullptr;
+    #ifdef ALSA
+    static const snd_pcm_format_t AUDIO_FORMAT = SND_PCM_FORMAT_S16_LE;
 
-        // Open stream
-        PaError err = Pa_OpenStream(
-            &streamIn,
-            &inputParameters,
-            nullptr,
-            SAMPLE_RATE,
-            FRAMES_PER_BUFFER,
-            paClipOff,
-            nullptr,
-            nullptr
-        );
-        if (err != paNoError) {
-            cerr << "Pa_OpenStream input failed: " << Pa_GetErrorText(err) << endl;
+    // Set up ALSA capture
+    bool openAudioInput() {
+        if (snd_pcm_open(&capture_handle, "default", SND_PCM_STREAM_CAPTURE, 0) < 0) {
+            cerr << "Failed to open ALSA capture device." << endl;
             return false;
         }
-
-        // Start stream
-        err = Pa_StartStream(streamIn);
-        if (err != paNoError) {
-            cerr << "Pa_StartStream input failed: " << Pa_GetErrorText(err) << endl;
+        if (configureDevice(capture_handle) < 0) {
+            cerr << "Failed to configure ALSA capture device." << endl;
             return false;
         }
-
         return true;
     }
 
-    bool startAudioStreamOut() {
-        // Check already open
-        if (streamOut) return true;
-
-        // Params
-        PaStreamParameters outputParameters;
-        memset(&outputParameters, 0, sizeof(outputParameters));
-        outputParameters.device = Pa_GetDefaultOutputDevice();
-        outputParameters.channelCount = CHANNELS;
-        outputParameters.sampleFormat = AUDIO_FORMAT;
-        outputParameters.suggestedLatency = Pa_GetDeviceInfo(outputParameters.device)->defaultLowOutputLatency;
-        outputParameters.hostApiSpecificStreamInfo = nullptr;
-
-        // Open stream
-        PaError err = Pa_OpenStream(
-            &streamOut,
-            nullptr,
-            &outputParameters,
-            SAMPLE_RATE,
-            FRAMES_PER_BUFFER,
-            paClipOff,
-            nullptr,
-            nullptr
-        );
-        if (err != paNoError) {
-            cerr << "Pa_OpenStream output failed: " << Pa_GetErrorText(err) << endl;
+    // Set up ALSA playback
+    bool openAudioOutput() {
+        if (snd_pcm_open(&playback_handle, "default", SND_PCM_STREAM_PLAYBACK, 0) < 0) {
+            cerr << "Failed to open ALSA playback device." << endl;
             return false;
         }
-
-        // Start stream
-        err = Pa_StartStream(streamOut);
-        if (err != paNoError) {
-            cerr << "Pa_StartStream output failed: " << Pa_GetErrorText(err) << endl;
+        if (configureDevice(playback_handle) < 0) {
+            cerr << "Failed to configure ALSA playback device." << endl;
             return false;
         }
-
         return true;
     }
 
-    void startRecording() {
-        isRecording = true;
-        audioBuffer.clear();
-        if (!startAudioStreamIn()) {
-            cerr << "Cannot open input stream for recording.\n";
-        }
+    // Configure common device params
+    int configureDevice(snd_pcm_t *handle) {
+        snd_pcm_hw_params_t *hw_params;
+        snd_pcm_hw_params_alloca(&hw_params);
+        if (snd_pcm_hw_params_any(handle, hw_params) < 0) return -1;
+        if (snd_pcm_hw_params_set_access(handle, hw_params, SND_PCM_ACCESS_RW_INTERLEAVED) < 0) return -1;
+        if (snd_pcm_hw_params_set_format(handle, hw_params, AUDIO_FORMAT) < 0) return -1;
+        unsigned int rate = SAMPLE_RATE;
+        if (snd_pcm_hw_params_set_rate_near(handle, hw_params, &rate, 0) < 0) return -1;
+        if (snd_pcm_hw_params_set_channels(handle, hw_params, CHANNELS) < 0) return -1;
+        if (snd_pcm_hw_params(handle, hw_params) < 0) return -1;
+        return 0;
     }
 
-    void stopRecording() {
-        isRecording = false;
-        stopAudioStreamIn();
-    }
-
+    // Record a chunk of audio data, returns a vector of int16_t samples.
     vector<int16_t> recordChunk() {
         vector<int16_t> chunk(FRAMES_PER_BUFFER, 0);
-        if (streamIn && isRecording) {
-            PaError err = Pa_ReadStream(streamIn, chunk.data(), FRAMES_PER_BUFFER);
-            if (err != paNoError) {
-                // Handle error
+        if (capture_handle) {
+            snd_pcm_sframes_t framesRead = snd_pcm_readi(capture_handle, chunk.data(), FRAMES_PER_BUFFER);
+            if (framesRead < 0) {
+                // Try to recover
+                snd_pcm_recover(capture_handle, (int)framesRead, 0);
+                // Return an empty chunk if we can't read
             }
         }
         return chunk;
     }
 
-    // For output
-    void enqueuePlayback(const vector<int16_t>& audioData) {
-        //cout << "Queuing " << audioData.size() << " samples." << endl;
-        lock_guard<mutex> lock(playMutex);
-        playQueue.push(audioData);
-        playCond.notify_one();
-    }
 
-    void startPlaybackThread() {
-        if (!playThread.joinable()) {
-            playThread = thread(&AudioHandler::playLoop, this);
+    // Play (output) a chunk of audio data
+    void playChunk(const vector<int16_t>& data) {
+        if (playback_handle) {
+            snd_pcm_sframes_t framesWritten = snd_pcm_writei(playback_handle, data.data(), data.size());
+            if (framesWritten < 0) {
+                snd_pcm_recover(playback_handle, (int)framesWritten, 0);
+            }
         }
     }
 
-    void stopPlaybackThread() {
-        lock_guard<mutex> lock(playMutex);
-        playbackRunning = false;
-        playCond.notify_one();
-        if (playThread.joinable()) {
-            playThread.join();
+    // Stop recording
+    void stopRecording() {
+        if (capture_handle) {
+            snd_pcm_close(capture_handle);
+            capture_handle = nullptr;
         }
     }
 
+    // Clean up
     void cleanup() {
-        stopAudioStreamIn();
-        stopAudioStreamOut();
-        stopPlaybackThread();
-        Pa_Terminate();
+        if (capture_handle) {
+            snd_pcm_close(capture_handle);
+            capture_handle = nullptr;
+        }
+        if (playback_handle) {
+            snd_pcm_close(playback_handle);
+            playback_handle = nullptr;
+        }
     }
 
 private:
-    PaStream* streamIn;
-    PaStream* streamOut;
-    bool isRecording;
-    vector<int16_t> audioBuffer;
+    snd_pcm_t *capture_handle;
+    snd_pcm_t *playback_handle;
 
-    // Playback
-    thread playThread;
-    queue<vector<int16_t>> playQueue;
-    mutex playMutex;
-    condition_variable playCond;
-    bool playbackRunning = true;
+    #else
+        
+    bool openAudioInput() {
 
-    void stopAudioStreamIn() {
-        if (streamIn) {
-            Pa_StopStream(streamIn);
-            Pa_CloseStream(streamIn);
-            streamIn = nullptr;
-        }
+        return true;
     }
 
-    void stopAudioStreamOut() {
-        if (streamOut) {
-            Pa_StopStream(streamOut);
-            Pa_CloseStream(streamOut);
-            streamOut = nullptr;
-        }
+    bool openAudioOutput() {
+
+        return true;
     }
 
-    void playLoop() {
-        if (!startAudioStreamOut()) {
-            cerr << "Failed to open output audio stream.\n";
-            return;
-        }
-        while (true) {
-            vector<int16_t> front;
-            unique_lock<mutex> lock(playMutex);
-            playCond.wait(lock, [this]{ return !playQueue.empty() || !playbackRunning; });
-            if (!playbackRunning && playQueue.empty()) { break; }
-            front = playQueue.front();
-            playQueue.pop();
-
-            // Write to PortAudio output
-            Pa_WriteStream(streamOut, front.data(), front.size());
-        }
-        stopAudioStreamOut();
+    vector<int16_t> recordChunk() {
+        vector<int16_t> chunk(FRAMES_PER_BUFFER, 0);
+        this_thread::sleep_for(chrono::seconds(1));
+        return chunk;
     }
+
+    void playChunk(const vector<int16_t>& data) {
+
+    }
+
+    void stopRecording() {
+
+    }
+
+    void cleanup() {
+
+    }
+
+private:
+    int *capture_handle;
+    int *playback_handle;
+
+    #endif
 };
 
 // -----------------------------------------------------------
 // OpenAIClient (WebSocket connection to OpenAI Realtime API)
 // -----------------------------------------------------------
 class OpenAIClient {
+public:
 
+    // Functions
     vector<string> functions = {"move_head", "move_face"};
 
-public:
     OpenAIClient(const string& instructions_, const string& voice_): instructions(instructions_), voice(voice_), context(nullptr), wsi(nullptr) {
         // Build session config JSON
         json sessionConfig = {
@@ -308,7 +271,6 @@ public:
     }
 
     ~OpenAIClient() {
-        // Clean up websockets
         if (context) {
             lws_context_destroy(context);
             context = nullptr;
@@ -325,18 +287,20 @@ public:
         int logs = LLL_ERR | LLL_WARN; //| LLL_INFO;
         lws_set_log_level(logs, NULL);
 
-        // Use the default event loop (1 thread)
+        // Configure
         info.port = CONTEXT_PORT_NO_LISTEN;
         info.protocols = protocols;
         info.gid = -1;
         info.uid = -1;
         info.options = LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT;
+        #ifdef __LINUX__
         info.client_ssl_ca_filepath = "/etc/ssl/certs/ca-certificates.crt";
+        #endif
 
         // Create
         context = lws_create_context(&info);
         if (!context) {
-            cerr << "Failed to create lws context.\n";
+            cerr << "Failed to create lws context." << endl;
             return false;
         }
 
@@ -353,23 +317,22 @@ public:
         ccinfo.userdata = this;
         wsi = lws_client_connect_via_info(&ccinfo);
         if (!wsi) {
-            cerr << "Failed to connect to server.\n";
+            cerr << "Failed to connect to server." << endl;
             return false;
         }
         return true;
     }
 
-    // The main service loop for websockets can be run in a dedicated thread
+    // Service loop
     void serviceLoop() {
         while (true) {
             lws_service(context, 50);
-            if (stopRequested) { break; }
+            if (stopRequested) break;
         }
     }
 
-    // Send a JSON event
-    void sendEvent(const json& event) {
-        // Get mutex and payload
+    // Send event
+    void sendEvent(const json &event) {
         lock_guard<mutex> lock(writeMutex);
         string payload = event.dump();
 
@@ -397,8 +360,7 @@ public:
         //cout << msg << endl;
         auto j = json::parse(msg, nullptr, false);
         if (j.is_discarded()) {
-            // Invalid JSON
-            cout << "Bad JSON: " << msg << endl;
+            cerr << "Bad JSON: " << msg << endl;
             return;
         }
         if (j.contains("type")) {
@@ -442,9 +404,12 @@ public:
                 vector<uint8_t> audioBytes = base64Decode(b64data);
 
                 // Convert to int16_t for playback
-                vector<int16_t> samples(audioBytes.size()/2);
+                vector<int16_t> samples(audioBytes.size() / 2);
                 memcpy(samples.data(), audioBytes.data(), audioBytes.size());
-                audioHandler.enqueuePlayback(samples);
+                //audioHandler.enqueuePlayback(samples);
+
+                // Play
+                audioHandler.playChunk(samples);
             }
             else if (type == "response.done") {
                 cout << "Response generation completed.\n";
@@ -468,15 +433,16 @@ public:
 
     // Called on close
     void onClose() {
-        cout << "Websocket closed.\n";
+        cout << "Websocket closed." << endl;
     }
 
     void close() {
         stopRequested = true;
     }
 
-    // For external usage
+    // Access to AudioHandler
     AudioHandler audioHandler;
+
     bool ready = false;
     bool talking = false;
     string response;
@@ -517,7 +483,7 @@ private:
             case LWS_CALLBACK_CLIENT_RECEIVE:
                 // Received a message
                 if (in && len > 0) {
-                    string msg((char*)in, len);
+                    string msg((char *)in, len);
                     client->onMessage(msg);
                 }
                 break;
@@ -530,6 +496,7 @@ private:
                     string msg((char*)in, len);
                     cout << msg << endl;
                 }
+                break;
             default:
                 if (false) {
                     cout << "Other:" << endl;
@@ -545,8 +512,8 @@ private:
 
     // Data
     static struct lws_protocols protocols[];
-    struct lws_context* context;
-    struct lws* wsi;
+    struct lws_context *context;
+    struct lws *wsi;
     mutex writeMutex;
     bool stopRequested = false;
 
@@ -564,7 +531,7 @@ struct lws_protocols OpenAIClient::protocols[] = {
         100*1024, // Per-session data size
         100*1024, // Receive buffer size
     },
-    { nullptr, nullptr, 0, 0 } // Terminator
+    { nullptr, nullptr, 0, 0 }
 };
 
 // -----------------------------------------------------------
@@ -574,8 +541,11 @@ class Wakeword {
 public:
     Wakeword(const vector<string>& keywords): handle(nullptr), listening(false) {
         // Init
-        //const char* keyword_paths[] = { "computer_mac.ppn" };
-        const char* keyword_paths[] = { "hey_robot_pi.ppn" };
+        #ifdef __LINUX__
+            const char* keyword_paths[] = { "hey_robot_pi.ppn" };
+        #else
+            const char* keyword_paths[] = { "computer_mac.ppn" };
+        #endif
         float sensitivities[] = {0.5f};
         pv_status_t status = pv_porcupine_init(
             PICOVOICE_KEY.c_str(),
@@ -586,8 +556,7 @@ public:
             &handle
         );
         if (status != PV_STATUS_SUCCESS) {
-            const char *error_message = pv_status_to_string(status);
-            cerr << "Failed to init Porcupine wake word: " << error_message << endl;
+            cerr << "Failed to init Porcupine wake word: " << pv_status_to_string(status) << "\n";
             handle = nullptr;
         }
     }
@@ -603,7 +572,7 @@ public:
         // Check init
         if (!handle) { return false; }
 
-        // Open portaudio stream
+/*        // Open portaudio stream
         listening = true;
         PaStream* stream;
         Pa_Initialize();
@@ -650,6 +619,7 @@ public:
         Pa_StopStream(stream);
         Pa_CloseStream(stream);
         Pa_Terminate();
+        */
         return true;
     }
 
@@ -658,7 +628,7 @@ public:
     }
 
 private:
-    pv_porcupine_t* handle;
+    pv_porcupine_t *handle;
     bool listening;
 };
 
@@ -672,23 +642,23 @@ public:
     void run() {
         // Init websockets and start a thread that runs the websocket’s service loop
         if (!openAIClient.initWebSocket()) {
-            cerr << "WebSocket init failed.\n";
+            cerr << "Websocket init failed.\n";
             return;
         }
         thread wsThread([this] { openAIClient.serviceLoop(); });
 
-        // Sleep
+        // Wait for session creation
         this_thread::sleep_for(chrono::seconds(2));
 
-        // The main loop: wait for wake word, then capture audio, send to OpenAI, etc.
+        // Main loop
         while (true) {
-            // 1. Block waiting for wake word
-            //wakeword.listen();
+            // Listen for wake word
+            wakeword.listen();
 
-            // 2. Start conversation
+            // Start conversation
             startConversation();
 
-            // 3. Sleep
+            // Sleep
             this_thread::sleep_for(chrono::seconds(1));
         }
 
