@@ -10,6 +10,10 @@
 #include <iostream>
 #include <condition_variable>
 
+#ifdef __linux__
+#define ALSA
+#endif
+
 #ifdef ALSA
 #include <alsa/asoundlib.h>
 #endif
@@ -136,6 +140,7 @@ public:
         vector<int16_t> chunk(FRAMES_PER_BUFFER, 0);
         if (capture_handle) {
             snd_pcm_sframes_t framesRead = snd_pcm_readi(capture_handle, chunk.data(), FRAMES_PER_BUFFER);
+		cout << "Frames read: " << framesRead << endl;
             if (framesRead < 0) {
                 // Try to recover
                 snd_pcm_recover(capture_handle, (int)framesRead, 0);
