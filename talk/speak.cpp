@@ -10,13 +10,18 @@
 #include <iostream>
 #include <condition_variable>
 
+// On linux, use ALSA
 #ifdef __linux__
 #define ALSA
 #endif
-
 #ifdef ALSA
 #include <alsa/asoundlib.h>
+#else
+#include "portaudio.h"
 #endif
+
+// Logging
+#define DEBUG 0
 
 // JSON
 #include <nlohmann/json.hpp>
@@ -48,9 +53,6 @@ static const string INSTRUCTIONS     =
     """You are Deskman, a friendly home assistance robot, with a physical appearance of a robot head and shoulders on a desk.\n"\
     "Output <UP>, <DOWN>, <LEFT>, or <RIGHT> if asked to move your head in any direction.""";
 
-// Wake words
-static const vector<string> KEYWORDS = {"computer"};
-
 // Audio parameters
 static const int SAMPLE_RATE = 24000;
 static const int CHANNELS    = 1;
@@ -75,12 +77,12 @@ void move_head(const string &direction) {
 }
 
 // -----------------------------------------------------------
-// AudioHandler using ALSA
+// AudioHandler
 // -----------------------------------------------------------
 class AudioHandler {
 public:
     AudioHandler() : capture_handle(nullptr), playback_handle(nullptr) {
-        initAudio();
+        bool success = initAudio();
     }
 
     ~AudioHandler() {
@@ -135,12 +137,12 @@ public:
         return 0;
     }
 
-    // Record a chunk of audio data, returns a vector of int16_t samples.
+    // Record a chunk of audio data, returns a vector of int16_t samples
     vector<int16_t> recordChunk() {
         vector<int16_t> chunk(FRAMES_PER_BUFFER, 0);
         if (capture_handle) {
             snd_pcm_sframes_t framesRead = snd_pcm_readi(capture_handle, chunk.data(), FRAMES_PER_BUFFER);
-		cout << "Frames read: " << framesRead << endl;
+            if (DEBUG) cout << "Frames read: " << framesRead << endl;
             if (framesRead < 0) {
                 // Try to recover
                 snd_pcm_recover(capture_handle, (int)framesRead, 0);
@@ -200,6 +202,7 @@ private:
     vector<int16_t> recordChunk() {
         vector<int16_t> chunk(FRAMES_PER_BUFFER, 0);
         this_thread::sleep_for(chrono::seconds(1));
+        cout << "Fake record" << endl;
         return chunk;
     }
 
@@ -338,6 +341,13 @@ public:
 
     // Send event
     void sendEvent(const json &event) {
+        if (!isConnected || wsi == nullptr) {
+            // The socket is closed
+            cout << "Error: socket is closed." << endl;
+            return;
+        }
+
+        // Get mutex and payload
         lock_guard<mutex> lock(writeMutex);
         string payload = event.dump();
 
@@ -352,11 +362,9 @@ public:
 
     // Called once the connection is established, we send "session.update"
     void onConnected() {
-        json evt{
-            {"type", "session.update"},
-            {"session", json::parse(sessionConfigStr)}
-        };
-        sendEvent(evt);
+        isConnected = true;
+        json event { {"type", "session.update"}, {"session", json::parse(sessionConfigStr)} };
+        sendEvent(event);
     }
 
     // Handler for incoming messages
@@ -378,7 +386,7 @@ public:
                 flush(cout);
 
                 // Commands
-                /*if (response.find("<UP>")      != string::npos) { move_head(   0,   40); move_face( 0,  1); response.clear(); }
+              /*if (response.find("<UP>")      != string::npos) { move_head(   0,   40); move_face( 0,  1); response.clear(); }
                 if (response.find("<DOWN>")    != string::npos) { move_head(   0,  -40); move_face( 0, -1); response.clear(); }
                 if (response.find("<LEFT>")    != string::npos) { move_head(  40,    0); move_face( 0,  0); response.clear(); }
                 if (response.find("<RIGHT>")   != string::npos) { move_head( -40,    0); move_face( 0,  0); response.clear(); }
@@ -424,14 +432,14 @@ public:
                 //audioHandler.startPlaybackThread();
             }
             else if (type == "session.updated") {
-                //cerr << "Event: " << j.dump() << endl;
+                if (DEBUG) cout << "Event: " << j.dump() << endl;
                 ready = true;
             }
             else if (type == "error") {
                 cerr << "Error event received: " << j.dump() << endl;
             }
             else {
-                //cout << "Event: " << j["type"] << /* j.dump() << */ endl;
+                if (DEBUG) cout << "Event: " << j["type"] << j.dump() << endl;
             }
         }
     }
@@ -439,6 +447,8 @@ public:
     // Called on close
     void onClose() {
         cout << "Websocket closed." << endl;
+        isConnected = false;
+        wsi = nullptr;
     }
 
     void close() {
@@ -448,15 +458,19 @@ public:
     // Access to AudioHandler
     AudioHandler audioHandler;
 
+    // Flags
     bool ready = false;
     bool talking = false;
+    bool isConnected = false;
+
+    // Response text as it comes in
     string response;
 
 private:
     // The libwebsockets callbacks
     static int callback_openai(struct lws* wsi, enum lws_callback_reasons reason, void* user, void* in, size_t len) {
         auto* client = reinterpret_cast<OpenAIClient*>(lws_wsi_user(wsi));
-        //printf("Callback reason: %d\n", reason);
+        if (DEBUG) printf("Callback reason: %d\n", reason);
         switch (reason) {
             case LWS_CALLBACK_CLIENT_APPEND_HANDSHAKE_HEADER:
                 {
@@ -497,13 +511,14 @@ private:
                 break;
             case LWS_CALLBACK_CLIENT_CONNECTION_ERROR:
                 cout << "Connection error:" << endl;
+                client->onClose();
                 if (in && len > 0) {
                     string msg((char*)in, len);
                     cout << msg << endl;
                 }
                 break;
             default:
-                if (false) {
+                if (DEBUG) {
                     cout << "Other:" << endl;
                     if (in && len > 0) {
                         string msg((char*)in, len);
@@ -544,7 +559,7 @@ struct lws_protocols OpenAIClient::protocols[] = {
 // -----------------------------------------------------------
 class Wakeword {
 public:
-    Wakeword(const vector<string>& keywords): handle(nullptr), listening(false) {
+    Wakeword(): handle(nullptr), listening(false) {
         // Init
         #ifdef __linux__
             const char* keyword_paths[] = { "hey_robot_pi.ppn" };
@@ -642,7 +657,7 @@ private:
 // -----------------------------------------------------------
 class VoiceAssistant {
 public:
-    VoiceAssistant(): openAIClient(INSTRUCTIONS, VOICE), wakeword(KEYWORDS) { }
+    VoiceAssistant(): openAIClient(INSTRUCTIONS, VOICE), wakeword() { }
 
     void run() {
         // Init websockets and start a thread that runs the websocket’s service loop
@@ -665,6 +680,8 @@ public:
 
             // Sleep
             this_thread::sleep_for(chrono::seconds(1));
+
+            break;
         }
 
         // Clean up
@@ -677,43 +694,41 @@ private:
     void startConversation() {
         cout << "Starting conversation...\n";
 
-        // Start recording from the user
-        //openAIClient.audioHandler.startRecording();
-
         // Sleep until OpenAI is session.updated ready
         while (!openAIClient.ready) {
             this_thread::sleep_for(chrono::milliseconds(100));
         }
 
         // Send audio chunks to the OpenAI realtime API
-        for (int i = 0; i < 20; i++) {
+        for (int i = 0; i < 30; i++) {
             // Get audio chunk
             auto chunk = openAIClient.audioHandler.recordChunk();
             if (!chunk.empty()) {
-                cout << "Listening... " << i << endl; //<< " frames read: " << chunk.size() << endl;
+                cout << "Listening... " << i << endl;
 
                 // Base64 encode
                 string b64chunk = base64Encode(reinterpret_cast<const uint8_t*>(chunk.data()), chunk.size()*sizeof(int16_t));
 
                 // Send to OpenAI
-                json evt{ {"type",  "input_audio_buffer.append"}, {"audio", b64chunk} };
-                openAIClient.sendEvent(evt);
+                json event{ {"type",  "input_audio_buffer.append"}, {"audio", b64chunk} };
+                openAIClient.sendEvent(event);
+
+                this_thread::sleep_for(chrono::milliseconds(100));
             }
         }
 
         // Stop recording
         cout << "Done listening." << endl;
-        openAIClient.audioHandler.stopRecording();
 
         // Commit the audio buffer
-        json evt{ {"type", "input_audio_buffer.commit"}};
-        openAIClient.sendEvent(evt);
-        cout << "Sent input_audio_buffer.commit\n";
+        json event{ {"type", "input_audio_buffer.commit"} };
+        openAIClient.sendEvent(event);
+        cout << "Sent input_audio_buffer.commit" << endl;
 
         // Ask for a response
-        json evtResponse{ {"type", "response.create"} };
-        openAIClient.sendEvent(evtResponse);
-        cout << "Sent response.create\n";
+        json eventResponse{ {"type", "response.create"} };
+        openAIClient.sendEvent(eventResponse);
+        cout << "Sent response.create" << endl;
 
         // Sleep until OpenAI is done
         openAIClient.talking = true;
@@ -733,3 +748,4 @@ int main() {
     assistant.run();
     return 0;
 }
+
