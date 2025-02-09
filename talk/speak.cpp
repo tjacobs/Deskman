@@ -293,7 +293,7 @@ public:
         info.gid = -1;
         info.uid = -1;
         info.options = LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT;
-        #ifdef __LINUX__
+        #ifdef __linux__
         info.client_ssl_ca_filepath = "/etc/ssl/certs/ca-certificates.crt";
         #endif
 
@@ -541,7 +541,7 @@ class Wakeword {
 public:
     Wakeword(const vector<string>& keywords): handle(nullptr), listening(false) {
         // Init
-        #ifdef __LINUX__
+        #ifdef __linux__
             const char* keyword_paths[] = { "hey_robot_pi.ppn" };
         #else
             const char* keyword_paths[] = { "computer_mac.ppn" };
