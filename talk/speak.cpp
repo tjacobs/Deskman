@@ -138,6 +138,9 @@ public:
         return 0;
     }
 
+    void startRecording() {
+    }
+
     // Record a chunk of audio data, returns a vector of int16_t samples
     vector<int16_t> recordChunk(int size) {
         vector<int16_t> chunk(size, 0);
