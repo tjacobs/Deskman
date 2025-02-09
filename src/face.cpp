@@ -3,6 +3,9 @@
 #include <stdio.h>
 #include "servos.h"
 
+// Face
+Face face;
+
 void move_face(int smile) {
     // Move the face
     update_face(&face, 0, smile);

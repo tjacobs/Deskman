@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <unistd.h>
-#include "common-sdl.h"
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_image.h>
 
 bool create_window();
 bool close_window();

@@ -61,9 +61,9 @@ static const int FRAMES_PER_BUFFER = 512 * 10;
 // -----------------------------------------------------------
 // Utility functions for movement
 // -----------------------------------------------------------
-void move_head(int x, int y) {
-    cout << "\nMove head: " << x << ", " << y << endl;
-}
+int open_servos();
+void move_servos(int &x, int &y);
+void move_head(int x, int y);
 
 void move_face(int eyes, int smile) {
     cout << "Move face: " << eyes << ", " << smile << endl;
@@ -554,7 +554,7 @@ public:
             if (type == "response.audio_transcript.delta") {
                 // Get this chunk of response
                 string part = j["delta"].get<string>();
-                cout << "[" << part << "]";
+                cout << "" << part << "";
                 response += part;
                 flush(cout);
 
@@ -766,7 +766,7 @@ public:
         cout << "Listening for wake word...\n";
 
         // Listen
-        listening = true;
+        //listening = true;
         while (listening) {
             // Read data
             auto chunk = audioHandler.recordChunk(pv_porcupine_frame_length());
@@ -813,12 +813,12 @@ public:
         thread wsThread([this] { openAIClient.serviceLoop(); });
 
         // Wait for session creation
-        this_thread::sleep_for(chrono::seconds(2));
+        this_thread::sleep_for(chrono::seconds(1));
 
         // Main loop
         while (true) {
             // Listen for wake word
-            wakeword.listen();
+            //wakeword.listen();
 
             // Start conversation
             startConversation();
@@ -848,7 +848,7 @@ private:
         audioHandler.startRecording();
 
         // Send audio chunks to the OpenAI realtime API
-        for (int i = 0; i < 30; i++) {
+        for (int i = 0; i < 80; i++) {
             // Get audio chunk
             auto chunk = audioHandler.recordChunk(FRAMES_PER_BUFFER);
             if (!chunk.empty()) {
@@ -873,12 +873,12 @@ private:
         // Commit the audio buffer
         json event{ {"type", "input_audio_buffer.commit"} };
         openAIClient.sendEvent(event);
-        cout << "Sent input_audio_buffer.commit" << endl;
+        if (DEBUG) cout << "Sent input_audio_buffer.commit" << endl;
 
         // Ask for a response
         json eventResponse{ {"type", "response.create"} };
         openAIClient.sendEvent(eventResponse);
-        cout << "Sent response.create" << endl;
+        if (DEBUG) cout << "Sent response.create" << endl;
 
         // Sleep until OpenAI is done
         openAIClient.talking = true;
@@ -894,6 +894,16 @@ private:
 // Main
 // -----------------------------------------------------------
 int main() {
+    open_servos();
+
+    move_head(800, 0);
+    this_thread::sleep_for(chrono::milliseconds(1000));
+    move_head(0, 100);
+    this_thread::sleep_for(chrono::milliseconds(2000));
+    move_head(-800, 0);
+    this_thread::sleep_for(chrono::milliseconds(1000));
+    move_head(0, -100);
+
     VoiceAssistant assistant;
     assistant.run();
     return 0;
