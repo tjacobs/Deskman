@@ -139,10 +139,10 @@ public:
     }
 
     // Record a chunk of audio data, returns a vector of int16_t samples
-    vector<int16_t> recordChunk() {
-        vector<int16_t> chunk(FRAMES_PER_BUFFER, 0);
+    vector<int16_t> recordChunk(int size) {
+        vector<int16_t> chunk(size, 0);
         if (capture_handle) {
-            snd_pcm_sframes_t framesRead = snd_pcm_readi(capture_handle, chunk.data(), FRAMES_PER_BUFFER);
+            snd_pcm_sframes_t framesRead = snd_pcm_readi(capture_handle, chunk.data(), size);
             if (DEBUG) cout << "Frames read: " << framesRead << endl;
             if (framesRead < 0) {
                 // Try to recover
@@ -216,8 +216,10 @@ private:
             &streamIn,
             &inputParameters,
             nullptr,
-            SAMPLE_RATE,
-            FRAMES_PER_BUFFER,
+//            SAMPLE_RATE,
+//            FRAMES_PER_BUFFER,
+               pv_sample_rate(),
+               pv_porcupine_frame_length(),
             paClipOff,
             nullptr,
             nullptr
@@ -285,10 +287,10 @@ private:
     }
 
     // Record a chunk of audio data, returns a vector of int16_t samples
-    vector<int16_t> recordChunk() {
-        vector<int16_t> chunk(FRAMES_PER_BUFFER, 0);
+    vector<int16_t> recordChunk(int size) {
+        vector<int16_t> chunk(size, 0);
         if (streamIn && isRecording) {
-            PaError err = Pa_ReadStream(streamIn, chunk.data(), FRAMES_PER_BUFFER);
+            PaError err = Pa_ReadStream(streamIn, chunk.data(), size);
             if (err != paNoError) {
                 // Handle error
             }
@@ -388,6 +390,8 @@ private:
 
     #endif
 };
+
+AudioHandler audioHandler;
 
 // -----------------------------------------------------------
 // OpenAIClient (WebSocket connection to OpenAI Realtime API)
@@ -618,9 +622,6 @@ public:
         stopRequested = true;
     }
 
-    // Access to AudioHandler
-    AudioHandler audioHandler;
-
     // Flags
     bool ready = false;
     bool talking = false;
@@ -755,54 +756,31 @@ public:
         // Check init
         if (!handle) { return false; }
 
-/*        // Open portaudio stream
-        listening = true;
-        PaStream* stream;
-        Pa_Initialize();
-        PaStreamParameters inputParameters;
-        memset(&inputParameters, 0, sizeof(inputParameters));
-        inputParameters.device = Pa_GetDefaultInputDevice();
-        inputParameters.channelCount = 1;
-        inputParameters.sampleFormat = paInt16;
-        inputParameters.suggestedLatency = Pa_GetDeviceInfo(inputParameters.device)->defaultLowInputLatency;
-        inputParameters.hostApiSpecificStreamInfo = nullptr;
-        PaError err = Pa_OpenStream(&stream,
-                                    &inputParameters,
-                                    nullptr,
-                                    pv_sample_rate(),
-                                    pv_porcupine_frame_length(),
-                                    paClipOff,
-                                    nullptr,
-                                    nullptr);
-        if (err != paNoError) {
-            cerr << "Pa_OpenStream failed: " << Pa_GetErrorText(err) << endl;
-            return false;
-        }
-        Pa_StartStream(stream);
+        // Start mic
+        audioHandler.startRecording();
         cout << "Listening for wake word...\n";
 
         // Listen
+        listening = true;
         while (listening) {
             // Read data
-            vector<int16_t> buffer(pv_porcupine_frame_length());
-            err = Pa_ReadStream(stream, buffer.data(), pv_porcupine_frame_length());
-            if (err != paNoError) { continue; }
-            int32_t keyword_index = -1;
-            pv_status_t status = pv_porcupine_process(handle, buffer.data(), &keyword_index);
-            if (status != PV_STATUS_SUCCESS) { continue; }
+            auto chunk = audioHandler.recordChunk(pv_porcupine_frame_length());
+            if (!chunk.empty()) {
+//                cout << "Got chunk" << endl;
+                int32_t keyword_index = -1;
+                pv_status_t status = pv_porcupine_process(handle, chunk.data(), &keyword_index);
+                if (status != PV_STATUS_SUCCESS) { cout << "Error" << endl; continue; }
 
-            // Detected?
-            if (keyword_index >= 0) {
-                cout << "Wake word detected!\n";
-                stop();
+                // Detected?
+                if (keyword_index >= 0) {
+                    cout << "Wake word detected!\n";
+                    stop();
+                }
             }
         }
 
         // Got it
-        Pa_StopStream(stream);
-        Pa_CloseStream(stream);
-        Pa_Terminate();
-        */
+        audioHandler.stopRecording();
         return true;
     }
 
@@ -850,7 +828,7 @@ public:
         // Clean up
         openAIClient.close();
         if (wsThread.joinable()) { wsThread.join(); }
-        openAIClient.audioHandler.cleanup();
+        audioHandler.cleanup();
     }
 
 private:
@@ -863,12 +841,12 @@ private:
         }
 
         // Start mic
-        openAIClient.audioHandler.startRecording();
+        audioHandler.startRecording();
 
         // Send audio chunks to the OpenAI realtime API
         for (int i = 0; i < 30; i++) {
             // Get audio chunk
-            auto chunk = openAIClient.audioHandler.recordChunk();
+            auto chunk = audioHandler.recordChunk(FRAMES_PER_BUFFER);
             if (!chunk.empty()) {
                 cout << "Listening... " << i << endl;
 
@@ -886,7 +864,7 @@ private:
 
         // Stop recording
         cout << "Done listening." << endl;
-        openAIClient.audioHandler.stopRecording();
+        audioHandler.stopRecording();
 
         // Commit the audio buffer
         json event{ {"type", "input_audio_buffer.commit"} };
