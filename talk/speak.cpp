@@ -70,10 +70,10 @@ void move_face(int eyes, int smile) {
 }
 
 void move_head(const string &direction) {
-    if      (direction == "Up")    move_head(  0,  40);
-    else if (direction == "Down")  move_head(  0, -40);
-    else if (direction == "Left")  move_head( 40,   0);
-    else if (direction == "Right") move_head(-40,   0);
+    if      (direction == "Up")    move_head(  0,  200);
+    else if (direction == "Down")  move_head(  0, -200);
+    else if (direction == "Left")  move_head( 800,   0);
+    else if (direction == "Right") move_head(-800,   0);
 }
 
 // -----------------------------------------------------------
@@ -229,6 +229,10 @@ private:
             nullptr,
             nullptr
         );
+        //cout << "SAMPLE_RATE: " << SAMPLE_RATE << endl;
+        //cout << "FRAMES_PER_BUFFER: " << FRAMES_PER_BUFFER << endl;
+        //cout << "pv_sample_rate(): " << pv_sample_rate() << endl;
+        //cout << "pv_porc: " << pv_porcupine_frame_length() << endl;
         if (err != paNoError) {
             cerr << "Pa_OpenStream input failed: " << Pa_GetErrorText(err) << endl;
             return false;
@@ -240,7 +244,6 @@ private:
             cerr << "Pa_StartStream input failed: " << Pa_GetErrorText(err) << endl;
             return false;
         }
-
         return true;
     }
 
@@ -279,7 +282,6 @@ private:
             cerr << "Pa_StartStream output failed: " << Pa_GetErrorText(err) << endl;
             return false;
         }
-
         return true;
     }
 
@@ -320,7 +322,6 @@ private:
     }
 
     void playChunk(const vector<int16_t>& audioData) {
-        //cout << "Queuing " << audioData.size() << " samples." << endl;
         lock_guard<mutex> lock(playMutex);
         playQueue.push(audioData);
         playCond.notify_one();
@@ -364,7 +365,11 @@ private:
             vector<int16_t> front;
             unique_lock<mutex> lock(playMutex);
             playCond.wait(lock, [this]{ return !playQueue.empty() || !playbackRunning; });
+
+            // If done, break out
             if (!playbackRunning && playQueue.empty()) { break; }
+
+            // Grab
             front = playQueue.front();
             playQueue.pop();
 
@@ -375,23 +380,24 @@ private:
     }
 
 private:
+    // Unused
     int *capture_handle;
     int *playback_handle;
 
     // Streams
-    PaStream* streamIn;
-    PaStream* streamOut;
+    PaStream *streamIn;
+    PaStream *streamOut;
 
-    // Flag
-    bool isRecording;
+    // Flags
+    bool isRecording = false;
+    bool playbackRunning = true;
 
     // Playback
+    mutex playMutex;
     thread playThread;
+    condition_variable playCond;
     vector<int16_t> audioBuffer;
     queue<vector<int16_t>> playQueue;
-    mutex playMutex;
-    condition_variable playCond;
-    bool playbackRunning = true;
 
     #endif
 };
@@ -766,7 +772,7 @@ public:
         cout << "Listening for wake word...\n";
 
         // Listen
-        //listening = true;
+        listening = true;
         while (listening) {
             // Read data
             auto chunk = audioHandler.recordChunk(pv_porcupine_frame_length());
@@ -894,8 +900,10 @@ private:
 // Main
 // -----------------------------------------------------------
 int main() {
+    // Connect to servos
     open_servos();
 
+    // Move head
     move_head(800, 0);
     this_thread::sleep_for(chrono::milliseconds(1000));
     move_head(0, 100);
@@ -904,6 +912,7 @@ int main() {
     this_thread::sleep_for(chrono::milliseconds(1000));
     move_head(0, -100);
 
+    // Speak
     VoiceAssistant assistant;
     assistant.run();
     return 0;

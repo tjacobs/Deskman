@@ -9,6 +9,7 @@ g++ speak.cpp \
 	-I include \
 	-lwebsockets -Llib \
 	-lpv_porcupine -Llib \
-	-lasound
+	-lasound \
+        -lSDL2 -lSDL2_image -lcurl
 	#-I /opt/homebrew/Cellar/portaudio/19.7.0/include \
 	#-lportaudio -L/opt/homebrew/Cellar/portaudio/19.7.0/lib
