@@ -1,4 +1,5 @@
 // Deskman robot.
+// Speaking and listening module.
 // Thomas Jacobs
 
 #include <queue>
@@ -896,22 +897,7 @@ private:
     Wakeword wakeword;
 };
 
-// -----------------------------------------------------------
-// Main
-// -----------------------------------------------------------
-int main() {
-    // Connect to servos
-    open_servos();
-
-    // Move head
-    move_head(800, 0);
-    this_thread::sleep_for(chrono::milliseconds(1000));
-    move_head(0, 100);
-    this_thread::sleep_for(chrono::milliseconds(2000));
-    move_head(-800, 0);
-    this_thread::sleep_for(chrono::milliseconds(1000));
-    move_head(0, -100);
-
+int speak() {
     // Speak
     VoiceAssistant assistant;
     assistant.run();

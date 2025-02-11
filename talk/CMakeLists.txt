@@ -1,14 +1,15 @@
-# Speak
+# Deskman robot
 cmake_minimum_required(VERSION 3.10)
-project(speak LANGUAGES CXX)
-set(TARGET_NAME speak)
+project(robot LANGUAGES CXX)
+set(TARGET_NAME robot)
 
 # Create the executable from source files
 add_executable(${TARGET_NAME}
+    main.cpp
+    face.cpp
     speak.cpp
-    ../src/image.cpp
-    ../src/face.cpp
-    ../src/servos.cpp
+    screen.cpp
+    servos.cpp
     ../servos/SMS_STS.cpp
     ../servos/SCS.cpp
     ../servos/SCSerial.cpp

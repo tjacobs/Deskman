@@ -2,11 +2,16 @@
 export LD_LIBRARY_PATH=./lib
 
 # Build
-g++ speak.cpp \
-    ../src/face.cpp ../src/image.cpp \
-    ../servos/SMS_STS.cpp ../servos/SCS.cpp ../servos/SCSerial.cpp ../src/servos.cpp \
-	-o speak -std=c++11 \
+g++ \
+   main.cpp \
+   speak.cpp \
+   screen.cpp \
+   face.cpp \
+   servos.cpp \
+   ../servos/SMS_STS.cpp ../servos/SCS.cpp ../servos/SCSerial.cpp \
+	-o robot -std=c++11 \
 	-I include \
+	-I ../src \
 	-lwebsockets -Llib \
 	-lpv_porcupine -Llib \
 	-lasound \
