@@ -5,29 +5,23 @@
 #include "face.h"
 #include "screen.h"
 #include "servos.h"
+#include <iostream>
 #include <thread>
 #include <chrono>
 
 using namespace std;
+
+void look(bool right);
 
 int main(int argc, char **argv) {
     // Connect to servos
     if (open_servos() != 0) printf("Could not open servos\n");
 
     // Create window
-    if (create_window(false) != 0) printf("Could not create window\n");
+    if (create_window(true) != 0) printf("Could not create window\n");
 
     // Create face
     face = create_face(screen_width, screen_height);
-
-    // Move head
-    move_head(800, 0);
-    this_thread::sleep_for(chrono::milliseconds(1000));
-    move_head(0, 100);
-    this_thread::sleep_for(chrono::milliseconds(2000));
-    move_head(-800, 0);
-    this_thread::sleep_for(chrono::milliseconds(1000));
-    move_head(0, -100);
 
     // Process input
     bool quit = false;
@@ -64,10 +58,33 @@ int main(int argc, char **argv) {
 
         // Wait
         SDL_Delay(16);
+
+        // Look
+        static int t = 0;
+        static bool right = false;
+        if (t > 500) {
+            look(right);
+            t = 0;
+            right = !right;
+        }
+        t++;
     }
 
     // Done
     close_window();
     return 0;
+}
+
+void look(bool right) {
+    cout << "Looking " << (right ? "right." : "left.") << endl;
+
+    // Move head
+    move_head((right ? 1 : -1) * 800, 0);
+    this_thread::sleep_for(chrono::milliseconds(1000));
+    move_head(0, 100);
+    this_thread::sleep_for(chrono::milliseconds(2000));
+    move_head((right ? 1 : -1) * -800, 0);
+    this_thread::sleep_for(chrono::milliseconds(1000));
+    move_head(0, -100);
 }
 

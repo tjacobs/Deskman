@@ -1,5 +1,6 @@
 # Run "source build.sh" to set this
 export LD_LIBRARY_PATH=./lib
+export DISPLAY=:0
 
 # Build
 g++ \
