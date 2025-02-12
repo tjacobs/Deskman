@@ -2,8 +2,10 @@
 #include "../servos/SCSerial.h"
 #include "../servos/SMS_STS.h"
 
-std::string port_name = "/dev/ttyAMA0";
+int head_x = 950;
+int head_y = 1680;
 
+std::string port_name = "/dev/ttyAMA0";
 SMS_STS st;
 SerialPort serial(port_name);
 
@@ -37,3 +39,12 @@ void move_servos(int &x, int &y) {
     int p1 = st.ReadPos(1);
     //printf("Position: %d\n", p1);
 }
+
+void move_head(int x, int y) {
+    // Move the head
+    head_x += x;
+    head_y += y;
+    printf("Moving head to: %d %d\n", head_x, head_y);
+    move_servos(head_x, head_y);
+}
+

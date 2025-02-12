@@ -1,18 +1,36 @@
-# Stream
-set(TARGET stream)
-add_executable(${TARGET} image.cpp box.cpp face.cpp main.cpp servos.cpp bark.cpp # stream.cpp 
-                        ../servos/SMS_STS.cpp ../servos/SCS.cpp ../servos/SCSerial.cpp)
+# Deskman robot
+cmake_minimum_required(VERSION 3.10)
+project(robot LANGUAGES CXX)
+set(TARGET_NAME robot)
 
-# Options
-include(DefaultTargetOptions)
+# Set C++ standard
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# SDL
-target_link_libraries(${TARGET} PRIVATE common-sdl)
+# Create the executable from source files
+add_executable(${TARGET_NAME}
+    main.cpp
+    face.cpp
+    speak.cpp
+    screen.cpp
+    servos.cpp
+    ../servos/SMS_STS.cpp
+    ../servos/SCS.cpp
+    ../servos/SCSerial.cpp
+)
 
-# Whisper
-#target_link_libraries(${TARGET} PRIVATE common whisper ${CMAKE_THREAD_LIBS_INIT})
+# Include headers from include
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
+include_directories(/usr/local/include)
+include_directories(/opt/homebrew/Cellar/portaudio/19.7.0/include)
+#        -lportaudio -L/opt/homebrew/Cellar/portaudio/19.7.0/lib)
 
-# Bark
-target_link_libraries(${TARGET} PRIVATE bark common2)
-target_compile_features(${TARGET} PRIVATE cxx_std_11)
-
+# Link the libraries needed
+link_directories(${CMAKE_CURRENT_SOURCE_DIR}/lib)
+target_link_libraries(${TARGET_NAME}
+    PRIVATE
+        SDL2 SDL2_image curl
+        websockets
+        pv_porcupine
+        asound
+)

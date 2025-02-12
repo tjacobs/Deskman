@@ -6,22 +6,6 @@
 // Face
 Face face;
 
-void move_face(int smile) {
-    // Move the face
-    update_face(&face, 0, smile);
-}
-
-int head_x = 950;
-int head_y = 1680;
-
-void move_head(int x, int y) {
-    // Move the head
-    head_x += x;
-    head_y += y;
-    printf("Moving head to: %d %d\n", head_x, head_y);
-    move_servos(head_x, head_y);
-}
-
 Face create_face(int screen_width, int screen_height) {
     Face face;
 
@@ -68,4 +52,8 @@ void update_face(Face* face, int eye_height, int smile_curve) {
     face->mouth_smile += smile_curve;
 }
 
+void move_face(int smile) {
+    // Move the face
+    update_face(&face, 0, smile);
+}
 

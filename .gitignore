@@ -1,6 +1,5 @@
 .DS_Store
-build/
-models/
-src/keys.h
-talk/keys.*h
-talk/robot
+src/build/
+src/local/models/
+src/keys.*
+src/robot
