@@ -19,16 +19,20 @@ int main(int argc, char **argv) {
     if (open_servos() != 0) printf("Could not open servos\n");
 
     // Create window
-    if (create_window(true) != 0) printf("Could not create window\n");
+    bool fullscreen = false;
+    #ifdef __linux__
+    fullscreen = true;
+    #endif
+    if (create_window(fullscreen) != 0) printf("Could not create window\n");
 
     // Create face
     face = create_face(screen_width, screen_height);
 
     // Speech
-    thread speech_detection_thread([argc, argv]() {
-        speak();
-    });
-    speech_detection_thread.detach();
+//    thread speech_detection_thread([argc, argv]() {
+//        speak();
+//    });
+//    speech_detection_thread.detach();
 
     // Process input
     bool quit = false;
