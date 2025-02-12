@@ -53,7 +53,7 @@ static const string VOICE            = "ash";
 static const string INSTRUCTIONS     =
     """You are Deskman, a friendly home assistance robot, with a physical appearance of a robot head and shoulders on a desk.\n"\
     "Output <UP>, <DOWN>, <LEFT>, or <RIGHT> if asked to move your head in any direction.\n"\
-    "Start by saying a simple 'hey' as an initial greeting.""";
+    "Start by saying a simple 'hey' and no other words as the first response.""";
 
 // Audio parameters
 static const int SAMPLE_RATE = 24000;
@@ -853,8 +853,8 @@ private:
         }
 
         // Ask for a response
-        json eventResponse{ {"type", "response.create"} };
-        openAIClient.sendEvent(eventResponse);
+        json eventHey{ {"type", "response.create"} };
+        openAIClient.sendEvent(eventHey);
         if (DEBUG) cout << "Sent response.create" << endl;
 
         // Start mic
