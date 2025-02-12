@@ -19,7 +19,7 @@ int open_servos() {
 void move_servos(int &x, int &y) {
     // Check if open
     if (!st.pSerial) {
-       printf("Not moving\n");
+       //printf("Not moving\n");
        return;
     }
 

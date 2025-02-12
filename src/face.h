@@ -16,6 +16,7 @@ typedef struct {
     int mouth_width;  // Width of the mouth
     int mouth_height; // Height of the mouth
     int mouth_smile;  // Curve for the smile (positive for smile, negative for frown)
+    char mouth_shape; // Shape of mouth for different phonemes (M=closed, F=slight, T=wide, L=narrow)
 
 } Face;
 

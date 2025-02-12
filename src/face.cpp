@@ -23,6 +23,7 @@ Face create_face(int screen_width, int screen_height) {
     face.mouth_width = screen_width / 2;
     face.mouth_height = screen_height / 15;
     face.mouth_smile = screen_height / 30;
+    face.mouth_shape = '_';
 
     return face;
 }
@@ -38,12 +39,64 @@ void render_face(SDL_Renderer* renderer, Face* face) {
     // Render mouth
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255); // Black for mouth line
     int thickness = 5; // Thickness of the mouth line
-    for (int t = 0; t < thickness; t++) {
-        for (int i = 0; i < face->mouth_width; i++) {
-            // Calculate the curve offset for each point on the mouth
-            int y_offset = (int)(face->mouth_smile * sin(M_PI * i / face->mouth_width));
-            SDL_RenderDrawPoint(renderer, face->mouth_x + i, face->mouth_y + y_offset + t);
-        }
+    
+    // Different mouth shapes based on phonemes
+    switch (face->mouth_shape) {
+        case 'M': // Closed mouth
+            for (int t = 0; t < thickness; t++) {
+                for (int i = 0; i < face->mouth_width; i++) {
+                    int y_offset = (int)(face->mouth_smile * sin(M_PI * i / face->mouth_width));
+                    SDL_RenderDrawPoint(renderer, face->mouth_x + i, face->mouth_y + y_offset + t);
+                }
+            }
+            break;
+            
+        case 'F': // Slight opening with top teeth showing
+            for (int t = 0; t < thickness; t++) {
+                // Top lip
+                for (int i = 0; i < face->mouth_width; i++) {
+                    SDL_RenderDrawPoint(renderer, face->mouth_x + i, face->mouth_y - 5 + t);
+                }
+                // Bottom lip
+                for (int i = 0; i < face->mouth_width; i++) {
+                    SDL_RenderDrawPoint(renderer, face->mouth_x + i, face->mouth_y + 10 + t);
+                }
+            }
+            break;
+            
+        case 'T': // Wide open
+            for (int t = 0; t < thickness; t++) {
+                // Top lip
+                for (int i = 0; i < face->mouth_width; i++) {
+                    SDL_RenderDrawPoint(renderer, face->mouth_x + i, face->mouth_y - 15 + t);
+                }
+                // Bottom lip
+                for (int i = 0; i < face->mouth_width; i++) {
+                    SDL_RenderDrawPoint(renderer, face->mouth_x + i, face->mouth_y + 15 + t);
+                }
+            }
+            break;
+            
+        case 'L': // Narrow opening
+            for (int t = 0; t < thickness; t++) {
+                // Top lip
+                for (int i = 0; i < face->mouth_width; i++) {
+                    SDL_RenderDrawPoint(renderer, face->mouth_x + i, face->mouth_y - 3 + t);
+                }
+                // Bottom lip  
+                for (int i = 0; i < face->mouth_width; i++) {
+                    SDL_RenderDrawPoint(renderer, face->mouth_x + i, face->mouth_y + 5 + t);
+                }
+            }
+            break;
+            
+        default: // Default closed mouth
+            for (int t = 0; t < thickness; t++) {
+                for (int i = 0; i < face->mouth_width; i++) {
+                    int y_offset = (int)(face->mouth_smile * sin(M_PI * i / face->mouth_width));
+                    SDL_RenderDrawPoint(renderer, face->mouth_x + i, face->mouth_y + y_offset + t);
+                }
+            }
     }
 }
 

@@ -41,10 +41,18 @@ int main(int argc, char **argv) {
             // Look
             static int t = 400;
             static bool right = false;
-            if (t > 500) {
-                look(right);
+            if (t > 30) {
                 t = 0;
-                right = !right;
+
+//                look(right);
+//                right = !right;
+
+                if      (face.mouth_shape == '_' ) face.mouth_shape = 'M';
+                else if (face.mouth_shape == 'M' ) face.mouth_shape = 'F';
+                else if (face.mouth_shape == 'F' ) face.mouth_shape = 'T';
+                else if (face.mouth_shape == 'T' ) face.mouth_shape = 'L';
+                else if (face.mouth_shape == 'L' ) face.mouth_shape = '_';
+                cout << face.mouth_shape << endl;
             }
             t++;
             this_thread::sleep_for(chrono::milliseconds(10));

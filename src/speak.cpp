@@ -2,6 +2,7 @@
 // Speaking and listening module.
 // Thomas Jacobs
 
+#include "face.h"
 #include <queue>
 #include <mutex>
 #include <string>
@@ -567,6 +568,16 @@ public:
                 cout << "" << part << "";
                 response += part;
                 flush(cout);
+
+                // Update mouth shape based on phonemes in the text
+                char mouth_shape = '_';
+                string upperPart = part;
+                transform(upperPart.begin(), upperPart.end(), upperPart.begin(), ::toupper);
+                if (upperPart.find("M") != string::npos) mouth_shape = 'M';
+                else if (upperPart.find("F") != string::npos) mouth_shape = 'F';
+                else if (upperPart.find("L") != string::npos) mouth_shape = 'L';
+                else if (upperPart.find("T") != string::npos) mouth_shape = 'T';
+                //face.mouth_shape = mouth_shape;
 
                 // Commands
               /*if (response.find("<UP>")      != string::npos) { move_head(   0,   40); move_face( 0,  1); response.clear(); }
