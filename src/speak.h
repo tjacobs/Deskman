@@ -1,2 +1,2 @@
-int speak();
+int speak(bool &quit);
 

@@ -369,6 +369,7 @@ private:
             playCond.wait(lock, [this]{ return !playQueue.empty() || !playbackRunning; });
 
             // If done, break out
+            cout << "Playback running: " << playbackRunning << " " << playQueue.empty() << endl;
             if (!playbackRunning && playQueue.empty()) { break; }
 
             // Grab
@@ -378,6 +379,7 @@ private:
             // Write to PortAudio output
             Pa_WriteStream(streamOut, front.data(), front.size());
         }
+        cout << "Playback done" << endl;
         stopAudioStreamOut();
     }
 
@@ -838,9 +840,11 @@ public:
         }
 
         // Clean up
+        cout << "Speaking becoming done." << endl;
         openAIClient.close();
         if (wsThread.joinable()) { wsThread.join(); }
         audioHandler.cleanup();
+        cout << "Speaking done." << endl;
     }
 
 private:
@@ -861,7 +865,7 @@ private:
         audioHandler.startRecording();
 
         // Send audio chunks to the OpenAI realtime API
-        for (int i = 0; i < 50; i++) {
+        for (int i = 0; i < 20; i++) {
             // Get audio chunk
             auto chunk = audioHandler.recordChunk(FRAMES_PER_BUFFER);
             if (!chunk.empty()) {
@@ -896,6 +900,7 @@ private:
         // Sleep until OpenAI is done
         openAIClient.talking = true;
         while (openAIClient.talking) { this_thread::sleep_for(chrono::milliseconds(100)); }
+        cout << "Speaking almost done." << endl;
     }
 
 private:
@@ -903,10 +908,11 @@ private:
     Wakeword wakeword;
 };
 
-int speak() {
+int speak(bool &quit) {
     // Speak
     VoiceAssistant assistant;
     assistant.run();
+    cout << "Speaking totally done." << endl;
     return 0;
 }
 

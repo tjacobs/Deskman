@@ -29,13 +29,30 @@ int main(int argc, char **argv) {
     face = create_face(screen_width, screen_height);
 
     // Speech
-//    thread speech_detection_thread([argc, argv]() {
-//        speak();
-//    });
-//    speech_detection_thread.detach();
-
-    // Process input
     bool quit = false;
+    thread speech_thread([argc, argv, &quit]() {
+        speak(quit);
+    });
+    speech_thread.detach();
+
+    // Movement
+    thread movement_thread([argc, argv, quit]() {
+        while (!quit) {
+            // Look
+            static int t = 400;
+            static bool right = false;
+            if (t > 500) {
+                look(right);
+                t = 0;
+                right = !right;
+            }
+            t++;
+            this_thread::sleep_for(chrono::milliseconds(10));
+        }
+    });
+    movement_thread.detach();
+
+    // Process keyboard input on main thread
     SDL_Event event;
     while (!quit) {
         // Get events
@@ -69,16 +86,6 @@ int main(int argc, char **argv) {
 
         // Wait
         SDL_Delay(16);
-
-        // Look
-        static int t = 400;
-        static bool right = false;
-        if (t > 500) {
-            look(right);
-            t = 0;
-            right = !right;
-        }
-        t++;
     }
 
     // Done
