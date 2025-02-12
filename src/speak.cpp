@@ -738,14 +738,14 @@ public:
     Wakeword(): handle(nullptr), listening(false) {
         // Init
         #ifdef __linux__
-            const char* keyword_paths[] = { "hey_robot_pi.ppn" };
+            const char* keyword_paths[] = { "../wakeword/hey_robot_pi.ppn" };
         #else
-            const char* keyword_paths[] = { "computer_mac.ppn" };
+            const char* keyword_paths[] = { "../wakeword/computer_mac.ppn" };
         #endif
         float sensitivities[] = {0.5f};
         pv_status_t status = pv_porcupine_init(
             PICOVOICE_KEY.c_str(),
-            "porcupine_params.pv",
+            "../wakeword/porcupine_params.pv",
             1,
             keyword_paths,
             sensitivities,

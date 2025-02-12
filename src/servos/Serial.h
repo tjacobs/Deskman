@@ -96,7 +96,7 @@ public:
 
         int baud_rate = 115200; //1000000;
         if (configurePort(serial_fd, baud_rate)) {
-            std::cout << "Serial port configured successfully with baud rate: " << baud_rate << std::endl;
+            //std::cout << "Serial port configured successfully with baud rate: " << baud_rate << std::endl;
         } else {
             std::cerr << "Failed to configure serial port." << std::endl;
             close(serial_fd);

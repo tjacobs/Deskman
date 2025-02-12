@@ -3,6 +3,7 @@
 // Thomas Jacobs, 2025.
 
 #include "face.h"
+#include "speak.h"
 #include "screen.h"
 #include "servos.h"
 #include <iostream>
@@ -60,10 +61,11 @@ int main(int argc, char **argv) {
         SDL_Delay(16);
 
         // Look
-        static int t = 0;
+        static int t = 400;
         static bool right = false;
         if (t > 500) {
             look(right);
+            speak();
             t = 0;
             right = !right;
         }
