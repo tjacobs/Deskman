@@ -1,3 +1,9 @@
-sudo apt install libportaudio2 portaudio19-dev
-pip install pyaudio websockets pvporcupine
+sudo apt install libsdl2-dev libsdl2-image-dev
+brew install sdl2
+brew install sdl2_image
+brew install jpeg
+brew install libpng
+brew install webp
+brew install curl
+
 

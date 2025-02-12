@@ -2,4 +2,5 @@
 src/build/
 src/local/models/
 src/keys.*
+src/py/keys.*
 src/robot
