@@ -24,6 +24,12 @@ int main(int argc, char **argv) {
     // Create face
     face = create_face(screen_width, screen_height);
 
+    // Speech
+    thread speech_detection_thread([argc, argv]() {
+        speak();
+    });
+    speech_detection_thread.detach();
+
     // Process input
     bool quit = false;
     SDL_Event event;
@@ -65,7 +71,6 @@ int main(int argc, char **argv) {
         static bool right = false;
         if (t > 500) {
             look(right);
-            speak();
             t = 0;
             right = !right;
         }

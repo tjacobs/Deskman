@@ -52,7 +52,8 @@ static const string MODEL            = "gpt-4o-realtime-preview-2024-10-01";
 static const string VOICE            = "ash";
 static const string INSTRUCTIONS     =
     """You are Deskman, a friendly home assistance robot, with a physical appearance of a robot head and shoulders on a desk.\n"\
-    "Output <UP>, <DOWN>, <LEFT>, or <RIGHT> if asked to move your head in any direction.""";
+    "Output <UP>, <DOWN>, <LEFT>, or <RIGHT> if asked to move your head in any direction.\n"\
+    "Start by saying a simple 'hey' as an initial greeting.""";
 
 // Audio parameters
 static const int SAMPLE_RATE = 24000;
@@ -851,11 +852,16 @@ private:
             this_thread::sleep_for(chrono::milliseconds(100));
         }
 
+        // Ask for a response
+        json eventResponse{ {"type", "response.create"} };
+        openAIClient.sendEvent(eventResponse);
+        if (DEBUG) cout << "Sent response.create" << endl;
+
         // Start mic
         audioHandler.startRecording();
 
         // Send audio chunks to the OpenAI realtime API
-        for (int i = 0; i < 80; i++) {
+        for (int i = 0; i < 50; i++) {
             // Get audio chunk
             auto chunk = audioHandler.recordChunk(FRAMES_PER_BUFFER);
             if (!chunk.empty()) {
