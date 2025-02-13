@@ -54,7 +54,7 @@ static const string VOICE            = "ash";
 static const string INSTRUCTIONS     =
     """You are Deskman, a friendly home assistance robot, with a physical appearance of a robot head and shoulders on a desk.\n"\
     "Call the provided tool function move_head() if asked to move your head in any direction.\n"\
-    "Start by saying a simple quick 'hey' and no other words as the first response.""";
+    "Start by saying a simple quick 'hey now, hi now' and no other words and call the tool function move_head(left) as the first response.""";
 
 // Audio parameters
 static const int SAMPLE_RATE = 24000;
@@ -75,8 +75,8 @@ void move_face(int eyes, int smile) {
 void move_head(const string &direction) {
     if      (direction == "Up")    move_head(  0,  200);
     else if (direction == "Down")  move_head(  0, -200);
-    else if (direction == "Left")  move_head( 800,   0);
-    else if (direction == "Right") move_head(-800,   0);
+    else if (direction == "Left")  move_head(-600,   0);
+    else if (direction == "Right") move_head( 600,   0);
 }
 
 // -----------------------------------------------------------
@@ -646,6 +646,12 @@ public:
     }
 
     void close() {
+        if (wsi) {
+            lws_callback_on_writable(wsi);
+            lws_cancel_service(lws_get_context(wsi));
+            wsi = nullptr;
+        }
+        isConnected = false;
         stopRequested = true;
     }
 
@@ -846,19 +852,17 @@ public:
             startConversation();
 
             // Sleep
-            this_thread::sleep_for(chrono::seconds(1));
+            this_thread::sleep_for(chrono::seconds(5));
 
-            break;
+            //break;
         }
 
         // Clean up
         cout << "Speaking becoming done." << endl;
         openAIClient.close();
-        cout << "Speaking becoming done 2." << endl;
         if (wsThread.joinable()) { wsThread.join(); }
-        cout << "Speaking becoming done 3." << endl;
         audioHandler.cleanup();
-        cout << "Speaking done." << endl;
+        cout << "Speaking about done." << endl;
     }
 
 private:
@@ -888,13 +892,19 @@ private:
         openAIClient.sendEvent(eventHey);
         if (true || DEBUG) cout << "Sent response.create" << endl;
 
+        // Indicate listening
+	move_head(0, 100);
+        this_thread::sleep_for(chrono::milliseconds(1000));
+	move_head(0, -100);
+        this_thread::sleep_for(chrono::milliseconds(1000));
+
         if (true) {
-            this_thread::sleep_for(chrono::milliseconds(1000));
+        //    this_thread::sleep_for(chrono::milliseconds(4000));
         // Start mic
         audioHandler.startRecording();
 
         // Send audio chunks to the OpenAI realtime API
-        for (int i = 0; i < 20; i++) {
+        for (int i = 0; i < 40; i++) {
             // Get audio chunk
             auto chunk = audioHandler.recordChunk(FRAMES_PER_BUFFER);
             if (!chunk.empty()) {
