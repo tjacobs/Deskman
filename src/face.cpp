@@ -2,6 +2,8 @@
 #include <math.h>
 #include <stdio.h>
 #include "servos.h"
+#include <iostream>
+using namespace std;
 
 // Face
 Face face;
@@ -51,7 +53,7 @@ void render_face(SDL_Renderer* renderer, Face* face) {
             }
             break;
             
-        case 'F': // Slight opening with top teeth showing
+        case 'F': // Slight opening
             for (int t = 0; t < thickness; t++) {
                 // Top lip
                 for (int i = 0; i < face->mouth_width; i++) {
@@ -59,7 +61,7 @@ void render_face(SDL_Renderer* renderer, Face* face) {
                 }
                 // Bottom lip
                 for (int i = 0; i < face->mouth_width; i++) {
-                    SDL_RenderDrawPoint(renderer, face->mouth_x + i, face->mouth_y + 10 + t);
+                    SDL_RenderDrawPoint(renderer, face->mouth_x + i, face->mouth_y + 15 + t);
                 }
             }
             break;
@@ -68,11 +70,11 @@ void render_face(SDL_Renderer* renderer, Face* face) {
             for (int t = 0; t < thickness; t++) {
                 // Top lip
                 for (int i = 0; i < face->mouth_width; i++) {
-                    SDL_RenderDrawPoint(renderer, face->mouth_x + i, face->mouth_y - 15 + t);
+                    SDL_RenderDrawPoint(renderer, face->mouth_x + i, face->mouth_y - 25 + t);
                 }
                 // Bottom lip
                 for (int i = 0; i < face->mouth_width; i++) {
-                    SDL_RenderDrawPoint(renderer, face->mouth_x + i, face->mouth_y + 15 + t);
+                    SDL_RenderDrawPoint(renderer, face->mouth_x + i, face->mouth_y + 25 + t);
                 }
             }
             break;

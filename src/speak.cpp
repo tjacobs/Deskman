@@ -53,8 +53,8 @@ static const string MODEL            = "gpt-4o-realtime-preview-2024-10-01";
 static const string VOICE            = "ash";
 static const string INSTRUCTIONS     =
     """You are Deskman, a friendly home assistance robot, with a physical appearance of a robot head and shoulders on a desk.\n"\
-    "Output <UP>, <DOWN>, <LEFT>, or <RIGHT> if asked to move your head in any direction.\n"\
-    "Start by saying a simple 'hey' and no other words as the first response.""";
+    "Call the provided tool function move_head() if asked to move your head in any direction.\n"\
+    "Start by saying a simple quick 'hey' and no other words as the first response.""";
 
 // Audio parameters
 static const int SAMPLE_RATE = 24000;
@@ -149,7 +149,7 @@ public:
         vector<int16_t> chunk(size, 0);
         if (capture_handle) {
             snd_pcm_sframes_t framesRead = snd_pcm_readi(capture_handle, chunk.data(), size);
-            if (DEBUG) cout << "Frames read: " << framesRead << endl;
+            if (false && DEBUG) cout << "Frames read: " << framesRead << endl;
             if (framesRead < 0) {
                 // Try to recover
                 snd_pcm_recover(capture_handle, (int)framesRead, 0);
@@ -301,9 +301,7 @@ private:
         vector<int16_t> chunk(size, 0);
         if (streamIn && isRecording) {
             PaError err = Pa_ReadStream(streamIn, chunk.data(), size);
-            if (err != paNoError) {
-                // Handle error
-            }
+            if (err != paNoError) { }
         }
         else cout << "Not recording. " << endl;
         return chunk;
@@ -421,6 +419,7 @@ public:
     OpenAIClient(const string& instructions_, const string& voice_): instructions(instructions_), voice(voice_), context(nullptr), wsi(nullptr) {
         // Build session config JSON
         json sessionConfig = {
+            //{"modalities", {"text"}},
             {"modalities", {"audio", "text"}},
             {"instructions", instructions},
             {"voice", voice},
@@ -562,7 +561,7 @@ public:
         }
         if (j.contains("type")) {
             string type = j["type"].get<string>();
-            if (type == "response.audio_transcript.delta") {
+            if (type == "response.audio_transcript.delta" || type == "response.text.delta") {
                 // Get this chunk of response
                 string part = j["delta"].get<string>();
                 cout << "" << part << "";
@@ -575,9 +574,11 @@ public:
                 transform(upperPart.begin(), upperPart.end(), upperPart.begin(), ::toupper);
                 if (upperPart.find("M") != string::npos) mouth_shape = 'M';
                 else if (upperPart.find("F") != string::npos) mouth_shape = 'F';
+                else if (upperPart.find("H") != string::npos) mouth_shape = 'F';
+                else if (upperPart.find("E") != string::npos) mouth_shape = 'F';
                 else if (upperPart.find("L") != string::npos) mouth_shape = 'L';
                 else if (upperPart.find("T") != string::npos) mouth_shape = 'T';
-                //face.mouth_shape = mouth_shape;
+                face.mouth_shape = mouth_shape;
 
                 // Commands
               /*if (response.find("<UP>")      != string::npos) { move_head(   0,   40); move_face( 0,  1); response.clear(); }
@@ -632,7 +633,7 @@ public:
                 cerr << "Error event received: " << j.dump() << endl;
             }
             else {
-                if (DEBUG) cout << "Event: " << j["type"] << j.dump() << endl;
+                if (DEBUG) cout << "Event: " << j["type"] << ": " << j.dump() << endl;
             }
         }
     }
@@ -660,7 +661,7 @@ private:
     // The libwebsockets callbacks
     static int callback_openai(struct lws* wsi, enum lws_callback_reasons reason, void* user, void* in, size_t len) {
         auto* client = reinterpret_cast<OpenAIClient*>(lws_wsi_user(wsi));
-        if (DEBUG) printf("Callback reason: %d\n", reason);
+        //if (DEBUG) printf("Callback reason: %d\n", reason);
         switch (reason) {
             case LWS_CALLBACK_CLIENT_APPEND_HANDSHAKE_HEADER:
                 {
@@ -709,7 +710,7 @@ private:
                 break;
             default:
                 if (DEBUG) {
-                    cout << "Other:" << endl;
+                    //cout << "Other:" << endl;
                     if (in && len > 0) {
                         string msg((char*)in, len);
                         cout << msg << endl;
@@ -853,7 +854,9 @@ public:
         // Clean up
         cout << "Speaking becoming done." << endl;
         openAIClient.close();
+        cout << "Speaking becoming done 2." << endl;
         if (wsThread.joinable()) { wsThread.join(); }
+        cout << "Speaking becoming done 3." << endl;
         audioHandler.cleanup();
         cout << "Speaking done." << endl;
     }
@@ -867,11 +870,26 @@ private:
             this_thread::sleep_for(chrono::milliseconds(100));
         }
 
+        // Ask a question in text
+        if (false) {
+         json eventAsk = {
+          { "type", "conversation.item.create" },
+          { "item", {
+            { "type", "message" },
+            { "role", "user" },
+            { "content", { { { "type", "input_text" }, { "text", "Can you say hi?" } } } }
+          }
+         } };
+         openAIClient.sendEvent(eventAsk);
+        }
+
         // Ask for a response
         json eventHey{ {"type", "response.create"} };
         openAIClient.sendEvent(eventHey);
-        if (DEBUG) cout << "Sent response.create" << endl;
+        if (true || DEBUG) cout << "Sent response.create" << endl;
 
+        if (true) {
+            this_thread::sleep_for(chrono::milliseconds(1000));
         // Start mic
         audioHandler.startRecording();
 
@@ -907,6 +925,7 @@ private:
         json eventResponse{ {"type", "response.create"} };
         openAIClient.sendEvent(eventResponse);
         if (DEBUG) cout << "Sent response.create" << endl;
+        }
 
         // Sleep until OpenAI is done
         openAIClient.talking = true;

@@ -9,11 +9,18 @@
 #include <iostream>
 #include <thread>
 #include <chrono>
-
+#include <termios.h>
+#include <unistd.h>
+#include <fcntl.h>
 using namespace std;
 
+// Functions
 void look(bool right);
+void enable_raw_mode();
+void disable_raw_mode();
+void read_arrow_keys();
 
+// Main
 int main(int argc, char **argv) {
     // Connect to servos
     if (open_servos() != 0) printf("Could not open servos\n");
@@ -43,22 +50,16 @@ int main(int argc, char **argv) {
             static bool right = false;
             if (t > 30) {
                 t = 0;
-
 //                look(right);
 //                right = !right;
-
-                if      (face.mouth_shape == '_' ) face.mouth_shape = 'M';
-                else if (face.mouth_shape == 'M' ) face.mouth_shape = 'F';
-                else if (face.mouth_shape == 'F' ) face.mouth_shape = 'T';
-                else if (face.mouth_shape == 'T' ) face.mouth_shape = 'L';
-                else if (face.mouth_shape == 'L' ) face.mouth_shape = '_';
-                cout << face.mouth_shape << endl;
             }
             t++;
             this_thread::sleep_for(chrono::milliseconds(10));
         }
     });
     movement_thread.detach();
+
+    //enable_raw_mode();
 
     // Process keyboard input on main thread
     SDL_Event event;
@@ -82,8 +83,11 @@ int main(int argc, char **argv) {
             }
         }
 
+        // Read arrow keys from terminal
+        //read_arrow_keys();
+
         // Clear the screen
-        SDL_SetRenderDrawColor(renderer, 200, 200, 200, 255);
+        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
         SDL_RenderClear(renderer);
 
         // Render the face
@@ -98,6 +102,7 @@ int main(int argc, char **argv) {
 
     // Done
     close_window();
+    disable_raw_mode();
     return 0;
 }
 
@@ -112,5 +117,47 @@ void look(bool right) {
     move_head((right ? 1 : -1) * -800, 0);
     this_thread::sleep_for(chrono::milliseconds(1000));
     move_head(0, -100);
+}
+
+void enable_raw_mode() {
+    struct termios tty;
+    tcgetattr(STDIN_FILENO, &tty);
+    tty.c_lflag &= ~(ICANON); // | ECHO); // Disable canonical mode and echo
+    tcsetattr(STDIN_FILENO, TCSANOW, &tty);
+    // Set stdin to non-blocking mode
+    int flags = fcntl(STDIN_FILENO, F_GETFL, 0);
+    fcntl(STDIN_FILENO, F_SETFL, flags | O_NONBLOCK);
+}
+
+void disable_raw_mode() {
+    struct termios tty;
+    tcgetattr(STDIN_FILENO, &tty);
+    tty.c_lflag |= (ICANON | ECHO); // Re-enable canonical mode and echo
+    tcsetattr(STDIN_FILENO, TCSANOW, &tty);
+    // Restore stdin to blocking mode
+    int flags = fcntl(STDIN_FILENO, F_GETFL, 0);
+    fcntl(STDIN_FILENO, F_SETFL, flags & ~O_NONBLOCK);
+}
+
+void read_arrow_keys() {
+    char ch;
+    ch = getchar();
+    if (ch == '\x1B') { // Start of escape sequence
+            char seq[2];
+            if (read(STDIN_FILENO, &seq[0], 1) > 0 &&
+                read(STDIN_FILENO, &seq[1], 1) > 0) {
+                if (seq[0] == '[') {
+                    switch (seq[1]) {
+                        case 'A': std::cout << "Up arrow pressed\n"; break;
+                        case 'B': std::cout << "Down arrow pressed\n"; break;
+                        case 'C': std::cout << "Right arrow pressed\n"; break;
+                        case 'D': std::cout << "Left arrow pressed\n"; break;
+                    }
+                }
+            }
+    } else if (ch > 0) {
+            std::cout << "Key pressed: " << ch << "\n";
+    }
+    if (ch == 'q') exit(0);
 }
 
