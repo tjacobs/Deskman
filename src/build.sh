@@ -16,6 +16,8 @@ g++ \
 	-lwebsockets -Llib \
 	-lpv_porcupine -Llib \
         -lSDL2 -lSDL2_image -lcurl \
-	-lasound \
+        -I /opt/homebrew/Cellar/sdl2/2.30.9/include/SDL2 \
+        -I /opt/homebrew/Cellar/sdl2_gfx/1.0.4/include \
 	-I /opt/homebrew/Cellar/portaudio/19.7.0/include \
+	-lSDL2_gfx -L/opt/homebrew/Cellar/sdl2_gfx/1.0.4/lib \
 	-lportaudio -L/opt/homebrew/Cellar/portaudio/19.7.0/lib
