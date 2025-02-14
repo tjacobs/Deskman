@@ -142,6 +142,11 @@ public:
     }
 
     void startRecording() {
+        recordedBuffer.clear();
+        isRecording = true;
+        if (!openAudioInput()) {
+            cerr << "Cannot open input stream for recording." << endl;
+        }
     }
 
     // Record a chunk of audio data, returns a vector of int16_t samples
@@ -156,11 +161,13 @@ public:
 
                 // Return an empty chunk if we can't read
                 cerr << "Error recording. " << endl;
+            } else {
+                // Store recorded audio in buffer
+                recordedBuffer.insert(recordedBuffer.end(), chunk.begin(), chunk.end());
             }
         }
         return chunk;
     }
-
 
     // Play (output) a chunk of audio data
     void playChunk(const vector<int16_t>& data) {
@@ -289,6 +296,7 @@ private:
     }
 
     void startRecording() {
+        recordedBuffer.clear();
         isRecording = true;
         audioBuffer.clear();
         if (!openAudioInput()) {
@@ -301,7 +309,13 @@ private:
         vector<int16_t> chunk(size, 0);
         if (streamIn && isRecording) {
             PaError err = Pa_ReadStream(streamIn, chunk.data(), size);
-            if (err != paNoError) { }
+            if (err != paNoError) {
+
+            }
+            else {
+                // Store recorded audio in buffer
+                recordedBuffer.insert(recordedBuffer.end(), chunk.begin(), chunk.end());
+            }
         }
         else cout << "Not recording. " << endl;
         return chunk;
@@ -403,6 +417,33 @@ private:
     queue<vector<int16_t>> playQueue;
 
     #endif
+
+public:
+
+    // Play back recorded buffer
+    vector<int16_t> recordedBuffer;
+    bool isPlayingBack = false;
+    void playbackRecordedAudio() {
+        if (recordedBuffer.empty()) {
+            cout << "No recorded audio to play back" << endl;
+            return;
+        }
+        
+        // Play in chunks
+        isPlayingBack = true;
+        cout << "Playing back recorded audio..." << endl;
+        size_t position = 0;
+        const size_t CHUNK_SIZE = FRAMES_PER_BUFFER;        
+        while (position < recordedBuffer.size()) {
+            size_t remaining = recordedBuffer.size() - position;
+            size_t chunkSize = min(CHUNK_SIZE, remaining);
+            vector<int16_t> chunk(recordedBuffer.begin() + position, recordedBuffer.begin() + position + chunkSize);
+            playChunk(chunk);
+            position += chunkSize;
+        }        
+        isPlayingBack = false;
+        cout << "Playback complete" << endl;
+    }
 };
 
 AudioHandler audioHandler;
@@ -833,7 +874,7 @@ public:
     VoiceAssistant(): openAIClient(INSTRUCTIONS, VOICE), wakeword() { }
 
     void run() {
-        // Init websockets and start a thread that runs the websocket’s service loop
+        // Init websockets and start a thread that runs the websocket's service loop
         if (!openAIClient.initWebSocket()) {
             cerr << "Websocket init failed.\n";
             return;
@@ -914,7 +955,7 @@ private:
                 string b64chunk = base64Encode(reinterpret_cast<const uint8_t*>(chunk.data()), chunk.size()*sizeof(int16_t));
 
                 // Send to OpenAI
-                json event{ {"type",  "input_audio_buffer.append"}, {"audio", b64chunk} };
+                json event{ {"type", "input_audio_buffer.append"}, {"audio", b64chunk} };
                 openAIClient.sendEvent(event);
 
                 // Throttle sending
@@ -926,6 +967,11 @@ private:
         cout << "Done listening." << endl;
         audioHandler.stopRecording();
         face.eye_height = 10;
+
+        // Play back the recorded audio
+        cout << "Playing back what was recorded..." << endl;
+        audioHandler.playbackRecordedAudio();
+        this_thread::sleep_for(chrono::milliseconds(1000));
 
         // Commit the audio buffer
         json event{ {"type", "input_audio_buffer.commit"} };
