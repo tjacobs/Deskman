@@ -898,9 +898,9 @@ private:
         move_head(0, -100);
         this_thread::sleep_for(chrono::milliseconds(1000));
 
-        if (true) {
-        //    this_thread::sleep_for(chrono::milliseconds(4000));
         // Start mic
+        face.eye_height = 40;
+        if (true) {
         audioHandler.startRecording();
 
         // Send audio chunks to the OpenAI realtime API
@@ -925,6 +925,7 @@ private:
         // Stop recording
         cout << "Done listening." << endl;
         audioHandler.stopRecording();
+        face.eye_height = 10;
 
         // Commit the audio buffer
         json event{ {"type", "input_audio_buffer.commit"} };
