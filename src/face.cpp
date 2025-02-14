@@ -17,7 +17,7 @@ Face create_face(int screen_width, int screen_height) {
     face.eye_right_x = (screen_width * 3) / 4;
     face.eye_right_y = screen_height / 3;
     face.eye_width = screen_width / 20;
-    face.eye_height = screen_height / 20;
+    face.eye_height = 10;
 
     // Mouth
     face.mouth_x = screen_width / 4;
