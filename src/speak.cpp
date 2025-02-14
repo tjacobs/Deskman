@@ -368,7 +368,7 @@ private:
             playCond.wait(lock, [this]{ return !playQueue.empty() || !playbackRunning; });
 
             // If done, break out
-            cout << "Playback running: " << playbackRunning << " " << playQueue.empty() << endl;
+            //cout << "Playback running: " << playbackRunning << " " << playQueue.empty() << endl;
             if (!playbackRunning && playQueue.empty()) { break; }
 
             // Grab
@@ -893,9 +893,9 @@ private:
         if (true || DEBUG) cout << "Sent response.create" << endl;
 
         // Indicate listening
-	move_head(0, 100);
+        move_head(0, 100);
         this_thread::sleep_for(chrono::milliseconds(1000));
-	move_head(0, -100);
+        move_head(0, -100);
         this_thread::sleep_for(chrono::milliseconds(1000));
 
         if (true) {
