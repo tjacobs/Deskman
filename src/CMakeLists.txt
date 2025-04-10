@@ -22,16 +22,29 @@ add_executable(${TARGET_NAME}
 # Include headers from include
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 include_directories(/usr/local/include)
+include_directories(/opt/homebrew/include)
+include_directories(/opt/homebrew/include/SDL2)
 include_directories(/opt/homebrew/Cellar/portaudio/19.7.0/include)
 
-# Link the libraries needed
+# Add library search paths
 link_directories(${CMAKE_CURRENT_SOURCE_DIR}/lib)
+link_directories(/opt/homebrew/lib)
+
+# Platform-specific libraries
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    # Linux specific libraries
+    target_link_libraries(${TARGET_NAME} PRIVATE asound)
+endif()
+
+# Link the libraries needed
 target_link_libraries(${TARGET_NAME}
     PRIVATE
-        SDL2 SDL2_image curl
+        /opt/homebrew/lib/libSDL2.dylib
+        /opt/homebrew/lib/libSDL2_image.dylib
+        curl
         pv_porcupine
-        asound
         -L${CMAKE_CURRENT_SOURCE_DIR}/lib -lwebsockets
         -L/opt/homebrew/Cellar/portaudio/19.7.0/lib -lportaudio
         -Wl,-rpath,${CMAKE_CURRENT_SOURCE_DIR}/lib
+        -Wl,-rpath,/opt/homebrew/lib
         )
