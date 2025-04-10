@@ -33,10 +33,9 @@ int main(int argc, char **argv) {
     thread speech_thread([argc, argv, &quit]() {
         speak(quit);
     });
-    speech_thread.detach();
 
     // Movement
-    thread movement_thread([argc, argv, quit]() {
+    thread movement_thread([argc, argv, &quit]() {
         while (!quit) {
             // Look
             static int t = 400;
@@ -47,12 +46,15 @@ int main(int argc, char **argv) {
 //                look(right);
 //                right = !right;
 
-                if      (face.mouth_shape == '_' ) face.mouth_shape = 'M';
-                else if (face.mouth_shape == 'M' ) face.mouth_shape = 'F';
-                else if (face.mouth_shape == 'F' ) face.mouth_shape = 'T';
-                else if (face.mouth_shape == 'T' ) face.mouth_shape = 'L';
-                else if (face.mouth_shape == 'L' ) face.mouth_shape = '_';
-                cout << face.mouth_shape << endl;
+                // Test mouth shape
+                if (false) {
+                    if      (face.mouth_shape == '_' ) face.mouth_shape = 'M';
+                    else if (face.mouth_shape == 'M' ) face.mouth_shape = 'F';
+                    else if (face.mouth_shape == 'F' ) face.mouth_shape = 'T';
+                    else if (face.mouth_shape == 'T' ) face.mouth_shape = 'L';
+                    else if (face.mouth_shape == 'L' ) face.mouth_shape = '_';
+                    cout << face.mouth_shape << endl;
+                }
             }
             t++;
             this_thread::sleep_for(chrono::milliseconds(10));
@@ -117,6 +119,15 @@ int main(int argc, char **argv) {
         SDL_Delay(16);
     }
 
+    // Set quit flag and wait for threads to finish
+    quit = true;
+    if (speech_thread.joinable()) {
+        speech_thread.join();
+    }
+    if (movement_thread.joinable()) {
+        movement_thread.join();
+    }
+
     // Done
     close_window();
     return 0;
@@ -134,4 +145,3 @@ void look(bool right) {
     this_thread::sleep_for(chrono::milliseconds(1000));
     move_head(0, -100);
 }
-
