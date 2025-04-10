@@ -104,7 +104,7 @@ int main(int argc, char **argv) {
         }
 
         // Clear the screen
-        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+        SDL_SetRenderDrawColor(renderer, 200, 200, 200, 255);
         SDL_RenderClear(renderer);
 
         // Render the face
