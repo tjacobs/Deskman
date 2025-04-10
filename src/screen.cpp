@@ -39,6 +39,11 @@ bool create_window(bool fullscreen) {
         return -1;
     }
 
+    // Hide cursor in fullscreen mode
+    if (fullscreen) {
+        SDL_ShowCursor(SDL_DISABLE);
+    }
+
     // Create renderer for the window
     renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
     if (!renderer) {
