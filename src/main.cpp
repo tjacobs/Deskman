@@ -6,6 +6,7 @@
 #include "speak.h"
 #include "screen.h"
 #include "servos.h"
+#include "vector_renderer.h"
 #include <iostream>
 #include <thread>
 #include <chrono>
@@ -13,6 +14,9 @@
 using namespace std;
 
 void look(bool right);
+
+// Global vector renderer
+VectorRenderer vectorRenderer;
 
 int main(int argc, char **argv) {
     // Connect to servos
@@ -28,10 +32,28 @@ int main(int argc, char **argv) {
     // Create face
     face = create_face(screen_width, screen_height);
 
+    // Create vector shapes for the face
+    Circle* leftEye = new Circle(30, {0, 0, 0, 255}, {255, 255, 255, 255}, 0.0f);
+    leftEye->localPosition = Vec3(-100, -50, 0);
+    Circle* rightEye = new Circle(30, {0, 0, 0, 255}, {255, 255, 255, 255}, 0.0f);
+    rightEye->localPosition = Vec3(100, -50, 0);
+    Ellipse* mouth = new Ellipse(120, 40, {0, 0, 0, 255}, {255, 255, 255, 255}, 0.0f);
+    mouth->localPosition = Vec3(0, 50, 0);
+    
+    // Add shapes to renderer
+    vectorRenderer.addShape(leftEye);
+    vectorRenderer.addShape(rightEye);
+    vectorRenderer.addShape(mouth);
+
+    // Animation variables
+    float time = 0.0f;
+    const float animationSpeed = 0.05f;
+    const float maxTilt = 30.0f;
+
     // Speech
     bool quit = false;
     thread speech_thread([argc, argv, &quit]() {
-        speak(quit);
+        //speak(quit);
     });
 
     // Movement
@@ -104,6 +126,13 @@ int main(int argc, char **argv) {
                     break;
             }
         }
+        // Update animation
+        time += animationSpeed;
+        float tiltX = sin(time) * maxTilt;
+        float tiltY = cos(time * 0.7f) * maxTilt * 0.5f;
+
+        // Apply rotation to the entire face
+        vectorRenderer.setFaceRotation(Vec3(tiltX, tiltY, 0));
 
         // Clear the screen
         SDL_SetRenderDrawColor(renderer, 200, 200, 200, 255);
@@ -111,6 +140,8 @@ int main(int argc, char **argv) {
 
         // Render the face
         render_face(renderer, &face);
+        // Render the vector shapes
+        vectorRenderer.render(renderer);
 
         // Present the updated screen
         SDL_RenderPresent(renderer);
