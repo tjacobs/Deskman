@@ -30,7 +30,7 @@ target_link_libraries(${TARGET_NAME}
     PRIVATE
         SDL2 SDL2_image curl
         pv_porcupine
-        #asound
+        asound
         -L${CMAKE_CURRENT_SOURCE_DIR}/lib -lwebsockets
         -L/opt/homebrew/Cellar/portaudio/19.7.0/lib -lportaudio
         -Wl,-rpath,${CMAKE_CURRENT_SOURCE_DIR}/lib

@@ -143,7 +143,6 @@ public:
 
     void startRecording() {
         recordedBuffer.clear();
-        isRecording = true;
         if (!openAudioInput()) {
             cerr << "Cannot open input stream for recording." << endl;
         }
