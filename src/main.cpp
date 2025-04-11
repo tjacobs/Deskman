@@ -34,10 +34,10 @@ int main(int argc, char **argv) {
 
     // Create vector shapes for the face
     Ellipse* leftEye = new Ellipse(45, 120, {255, 255, 255, 255}, {255, 255, 255, 255}, 0.0f);
-    leftEye->localPosition = Vec3(-200, -100, 0);
+    leftEye->localPosition = Vec3(-120, -100, 0);
     
     Ellipse* rightEye = new Ellipse(45, 120, {255, 255, 255, 255}, {255, 255, 255, 255}, 0.0f);
-    rightEye->localPosition = Vec3(200, -100, 0);
+    rightEye->localPosition = Vec3(120, -100, 0);
     
     // Create mouth with cutout
     Ellipse* mouth = new Ellipse(240, 80, {255, 255, 255, 255}, {255, 255, 255, 255}, 0.0f, -40, 180);
@@ -50,10 +50,10 @@ int main(int argc, char **argv) {
 
     // Animation variables
     float time = 0.0f;
-    const float animationSpeed = 0.05f;
-    const float maxTilt = 30.0f;
-    const float blinkSpeed = 4.0f;  // Increased speed for faster blinking
-    const float blinkInterval = 10.0f;  // Time between blinks in seconds
+    const float animationSpeed = 0.02f;  // Reduced from 0.05f for slower movement
+    const float maxTilt = 15.0f;  // Reduced from 30.0f for less extreme tilting
+    const float blinkSpeed = 8.0f;  // Increased from 4.0f for faster blinking
+    const float blinkInterval = 10.0f;
     float blinkTimer = 0.0f;
     bool isBlinking = false;
 
@@ -136,7 +136,7 @@ int main(int argc, char **argv) {
         // Update animation
         time += animationSpeed;
         float tiltX = sin(time) * maxTilt;
-        float tiltY = cos(time * 0.7f) * maxTilt * 0.5f;
+        float tiltY = cos(time * 0.5f) * maxTilt * 0.3f;  // Reduced Y tilt and made it slower
 
         // Update blinking
         blinkTimer += animationSpeed;
@@ -165,7 +165,7 @@ int main(int argc, char **argv) {
         vectorRenderer.setFaceRotation(Vec3(tiltX, tiltY, 0));
 
         // Clear the screen
-        SDL_SetRenderDrawColor(renderer, 181, 174, 173, 255);  // Warm taupe
+        SDL_SetRenderDrawColor(renderer, 181, 174, 163, 255);
         SDL_RenderClear(renderer);
 
         // Render the face
