@@ -33,10 +33,10 @@ int main(int argc, char **argv) {
     face = create_face(screen_width, screen_height);
 
     // Create vector shapes for the face
-    Ellipse* leftEye = new Ellipse(60, 80, {0, 0, 0, 255}, {255, 255, 255, 255}, 0.0f);
+    Ellipse* leftEye = new Ellipse(60, 160, {0, 0, 0, 255}, {255, 255, 255, 255}, 0.0f);
     leftEye->localPosition = Vec3(-200, -100, 0);
     
-    Ellipse* rightEye = new Ellipse(60, 80, {0, 0, 0, 255}, {255, 255, 255, 255}, 0.0f);
+    Ellipse* rightEye = new Ellipse(60, 160, {0, 0, 0, 255}, {255, 255, 255, 255}, 0.0f);
     rightEye->localPosition = Vec3(200, -100, 0);
     
     Ellipse* mouth = new Ellipse(240, 80, {0, 0, 0, 255}, {255, 255, 255, 255}, 0.0f);
@@ -155,7 +155,8 @@ int main(int argc, char **argv) {
         }
 
         // Update eye shapes
-        float eyeHeight = 40.0f * (1.0f - blinkProgress * 0.9f);  // Reduce height by up to 90%
+        float baseHeight = 160.0f * 0.7f;  // Start at 70% of full height (112)
+        float eyeHeight = baseHeight * (1.0f - blinkProgress * 0.9f);  // Reduce to 10% of base height (11.2) during blink
         leftEye->radiusY = eyeHeight;
         rightEye->radiusY = eyeHeight;
 
