@@ -1,4 +1,5 @@
 #include "screen.h"
+#include <SDL2/SDL_ttf.h>
 
 // SDL objects
 SDL_Window* window = NULL;
@@ -20,6 +21,13 @@ bool create_window(bool fullscreen) {
     // Initialize SDL_image
     if (IMG_Init(IMG_INIT_JPG | IMG_INIT_PNG | IMG_INIT_TIF) == 0) {
         fprintf(stderr, "SDL_image could not initialize: %s\n", SDL_GetError());
+        SDL_Quit();
+        return -1;
+    }
+
+    // Initialize SDL_ttf
+    if (TTF_Init() < 0) {
+        fprintf(stderr, "SDL_ttf could not initialize: %s\n", TTF_GetError());
         SDL_Quit();
         return -1;
     }
