@@ -33,20 +33,20 @@ int main(int argc, char **argv) {
     face = create_face(screen_width, screen_height);
 
     // Create vector shapes for the face
-    Ellipse* leftEye = new Ellipse(60, 160, {0, 0, 0, 255}, {255, 255, 255, 255}, 0.0f);
+    Ellipse* leftEye = new Ellipse(45, 120, {255, 255, 255, 255}, {255, 255, 255, 255}, 0.0f);
     leftEye->localPosition = Vec3(-200, -100, 0);
     
-    Ellipse* rightEye = new Ellipse(60, 160, {0, 0, 0, 255}, {255, 255, 255, 255}, 0.0f);
+    Ellipse* rightEye = new Ellipse(45, 120, {255, 255, 255, 255}, {255, 255, 255, 255}, 0.0f);
     rightEye->localPosition = Vec3(200, -100, 0);
     
     // Create mouth with cutout
-    Ellipse* mouth = new Ellipse(240, 80, {0, 0, 0, 255}, {255, 255, 255, 255}, 0.0f, -40, 180);
+    Ellipse* mouth = new Ellipse(240, 80, {255, 255, 255, 255}, {255, 255, 255, 255}, 0.0f, -40, 180);
     mouth->localPosition = Vec3(0, 200, 0);
     
     // Add shapes to renderer
     vectorRenderer.addShape(leftEye);
     vectorRenderer.addShape(rightEye);
-    vectorRenderer.addShape(mouth);
+//    vectorRenderer.addShape(mouth);
 
     // Animation variables
     float time = 0.0f;
@@ -165,7 +165,7 @@ int main(int argc, char **argv) {
         vectorRenderer.setFaceRotation(Vec3(tiltX, tiltY, 0));
 
         // Clear the screen
-        SDL_SetRenderDrawColor(renderer, 200, 200, 200, 255);
+        SDL_SetRenderDrawColor(renderer, 181, 174, 173, 255);  // Warm taupe
         SDL_RenderClear(renderer);
 
         // Render the face
