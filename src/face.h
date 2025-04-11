@@ -1,5 +1,6 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
+#include <SDL2/SDL_ttf.h>
 
 typedef struct {
     // Eye parameters
@@ -17,6 +18,9 @@ typedef struct {
     int mouth_height; // Height of the mouth
     int mouth_smile;  // Curve for the smile (positive for smile, negative for frown)
     char mouth_shape; // Shape of mouth for different phonemes (M=closed, F=slight, T=wide, L=narrow)
+
+    // Font for text rendering
+    TTF_Font* font;
 
 } Face;
 

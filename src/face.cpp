@@ -26,6 +26,16 @@ Face create_face(int screen_width, int screen_height) {
     face.mouth_height = screen_height / 15;
     face.mouth_smile = screen_height / 30;
     face.mouth_shape = '_';
+    // Load font
+    face.font = TTF_OpenFont("/System/Library/Fonts/Helvetica.ttc", 24);
+    if (!face.font) {
+        fprintf(stderr, "Failed to load font: %s\n", TTF_GetError());
+        // Try fallback font
+        face.font = TTF_OpenFont("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 24);
+        if (!face.font) {
+            fprintf(stderr, "Failed to load fallback font: %s\n", TTF_GetError());
+        }
+    }
 
     return face;
 }
