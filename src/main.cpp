@@ -50,12 +50,26 @@ int main(int argc, char **argv) {
 
     // Animation variables
     float time = 0.0f;
-    const float animationSpeed = 0.02f;  // Reduced from 0.05f for slower movement
-    const float maxTilt = 15.0f;  // Reduced from 30.0f for less extreme tilting
-    const float blinkSpeed = 8.0f;  // Increased from 4.0f for faster blinking
+    const float animationSpeed = 0.02f;
+    const float maxTilt = 15.0f;
+    const float blinkSpeed = 8.0f;
     const float blinkInterval = 10.0f;
     float blinkTimer = 0.0f;
     bool isBlinking = false;
+
+    // Look direction variables
+    float lookTimer = 0.0f;
+    const float lookInterval = 5.0f;  // Look in new direction every 5 seconds
+    const float eyeMoveDuration = 0.5f;  // Time for eyes to move
+    const float headMoveDuration = 1.0f;  // Time for head to follow
+    bool isLooking = false;
+    float targetX = 0.0f;
+    float targetY = 0.0f;
+    float lookTiltX = 0.0f;
+    float lookTiltY = 0.0f;
+    float currentHeadX = 0.0f;
+    float currentHeadY = 0.0f;
+    float lookStartTime = 0.0f;
 
     // Speech
     bool quit = false;
@@ -66,26 +80,6 @@ int main(int argc, char **argv) {
     // Movement
     thread movement_thread([argc, argv, &quit]() {
         while (!quit) {
-            // Look
-            static int t = 400;
-            static bool right = false;
-            if (t > 30) {
-                t = 0;
-
-//                look(right);
-//                right = !right;
-
-                // Test mouth shape
-                if (false) {
-                    if      (face.mouth_shape == '_' ) face.mouth_shape = 'M';
-                    else if (face.mouth_shape == 'M' ) face.mouth_shape = 'F';
-                    else if (face.mouth_shape == 'F' ) face.mouth_shape = 'T';
-                    else if (face.mouth_shape == 'T' ) face.mouth_shape = 'L';
-                    else if (face.mouth_shape == 'L' ) face.mouth_shape = '_';
-                    cout << face.mouth_shape << endl;
-                }
-            }
-            t++;
             this_thread::sleep_for(chrono::milliseconds(10));
         }
     });
@@ -135,8 +129,65 @@ int main(int argc, char **argv) {
         }
         // Update animation
         time += animationSpeed;
-        float tiltX = sin(time) * maxTilt;
-        float tiltY = cos(time * 0.5f) * maxTilt * 0.3f;  // Reduced Y tilt and made it slower
+        float tiltX = 0; //sin(time) * maxTilt;
+        float tiltY = 0; //cos(time * 0.5f) * maxTilt * 0.3f;
+
+        // Update looking behavior
+        lookTimer += 0.016f;  // Assuming ~60fps
+        if (!isLooking && lookTimer >= lookInterval) {
+            isLooking = true;
+            lookTimer = 0.0f;
+            lookStartTime = time;
+            
+            // Choose random look target (-1 to 1 range)
+            targetX = (rand() % 200 - 100) / 100.0f;
+            targetY = (rand() % 200 - 100) / 100.0f;
+            
+            // Reset current positions
+            lookTiltX = 0.0f;
+            lookTiltY = 0.0f;
+            currentHeadX = 0.0f;
+            currentHeadY = 0.0f;
+        }
+
+        if (isLooking) {
+            float lookTime = time - lookStartTime;
+            
+            // Tilt face first
+            if (lookTime < eyeMoveDuration) {
+                float t = lookTime / eyeMoveDuration;
+                lookTiltX = targetX * t * 20.0f;  // Up to 20 degrees tilt
+                lookTiltY = targetY * t * 20.0f;
+            } else {
+                lookTiltX = targetX * 20.0f;
+                lookTiltY = targetY * 20.0f;
+                
+                // Then move head
+                if (lookTime < (eyeMoveDuration + headMoveDuration)) {
+                    float t = (lookTime - eyeMoveDuration) / headMoveDuration;
+                    currentHeadX = targetX * t;
+                    currentHeadY = targetY * t;
+                    
+                    // Move servos
+                    move_head(currentHeadX * 800, currentHeadY * 200);
+
+                    // Gradually reduce tilt as head moves
+                    lookTiltX *= (1.0f - t);
+                    lookTiltY *= (1.0f - t);
+                } else {
+                    currentHeadX = targetX;
+                    currentHeadY = targetY;
+                    lookTiltX = 0.0f;
+                    lookTiltY = 0.0f;
+                    isLooking = false;
+                }
+            }
+        }
+
+        // Apply combined rotation to the face (base animation + looking tilt)
+        float finalTiltX = sin(time) * maxTilt + lookTiltX;
+        float finalTiltY = cos(time * 0.5f) * maxTilt * 0.3f + lookTiltY;
+        vectorRenderer.setFaceRotation(Vec3(lookTiltX, lookTiltY, 0));
 
         // Update blinking
         blinkTimer += animationSpeed;
@@ -156,13 +207,10 @@ int main(int argc, char **argv) {
         }
 
         // Update eye shapes
-        float baseHeight = 160.0f * 0.7f;  // Start at 70% of full height (112)
-        float eyeHeight = baseHeight * (1.0f - blinkProgress * 0.9f);  // Reduce to 10% of base height (11.2) during blink
+        float baseHeight = 120.0f;
+        float eyeHeight = baseHeight * (1.0f - blinkProgress * 0.9f);
         leftEye->radiusY = eyeHeight;
         rightEye->radiusY = eyeHeight;
-
-        // Apply rotation to the entire face
-        vectorRenderer.setFaceRotation(Vec3(tiltX, tiltY, 0));
 
         // Clear the screen
         SDL_SetRenderDrawColor(renderer, 181, 174, 163, 255);
