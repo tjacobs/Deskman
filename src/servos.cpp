@@ -44,7 +44,7 @@ void move_head(int x, int y) {
     // Move the head
     head_x += x;
     head_y += y;
-    //printf("Moving head to: %d, %d\n", head_x, head_y);
+    printf("Moving head to: %d, %d\n", head_x, head_y);
     move_servos(head_x, head_y);
 }
 

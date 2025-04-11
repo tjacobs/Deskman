@@ -62,7 +62,7 @@ int main(int argc, char **argv) {
     const float lookInterval = 5.0f;
     const float eyeMoveDuration = 0.5f;
     const float HEAD_SCALE = 100.0f;  // Scale factor for head movement
-    const float WAIT_DURATION = 1.0f;  // Time to wait at each position
+    const float WAIT_DURATION = 0.2f;  // Time to wait at each position
     bool isLooking = false;
     float targetX = 0.0f;
     float targetY = 0.0f;
@@ -71,8 +71,6 @@ int main(int argc, char **argv) {
     float currentHeadX = 0.0f;
     float currentHeadY = 0.0f;
     float lookStartTime = 0.0f;
-    float lastMoveX = 0.0f;  // Store the last position to return to
-    float lastMoveY = 0.0f;
     int lookDirection = 0;  // 0: left, 1: right, 2: up, 3: down
     int lookState = 0;  // 0: initial look, 1: wait1, 2: move, 3: wait2, 4: move back, 5: wait3
 
@@ -196,7 +194,7 @@ int main(int argc, char **argv) {
                         lookTiltX = targetX * t * 20.0f;
                         lookTiltY = targetY * t * 20.0f;
                     } else {
-                        lookState = 1;  // Move to first wait state
+                        lookState = 2;  // Move to first wait state
                         lookStartTime = time;  // Reset timer for next state
                     }
                     break;
@@ -205,8 +203,6 @@ int main(int argc, char **argv) {
                     if (lookTime >= WAIT_DURATION) {
                         lookState = 2;  // Move to head movement state
                         lookStartTime = time;
-                        lastMoveX = currentHeadX;  // Store current position to return to
-                        lastMoveY = currentHeadY;
                     }
                     break;
 
@@ -214,21 +210,28 @@ int main(int argc, char **argv) {
                     move_head(targetX * HEAD_SCALE, targetY * HEAD_SCALE);
                     currentHeadX = targetX;
                     currentHeadY = targetY;
-                    lookState = 3;  // Move to second wait state
+                    // Start transitioning eyes back
+                    lookState = 3;
                     lookStartTime = time;
                     break;
 
-                case 3:  // Wait at new position
-                    if (lookTime >= WAIT_DURATION) {
+                case 3:  // Wait at new position and transition eyes back
+                    if (lookTime < eyeMoveDuration) {
+                        float t = lookTime / eyeMoveDuration;
+                        lookTiltX = targetX * (1.0f - t) * 20.0f;  // Smoothly reduce tilt
+                        lookTiltY = targetY * (1.0f - t) * 20.0f;
+                    } else if (lookTime >= WAIT_DURATION) {
                         lookState = 4;  // Move to return movement state
                         lookStartTime = time;
+                        lookTiltX = 0.0f;  // Ensure eyes are centered
+                        lookTiltY = 0.0f;
                     }
                     break;
 
                 case 4:  // Move back
-                    move_head(lastMoveX * HEAD_SCALE, lastMoveY * HEAD_SCALE);
-                    currentHeadX = lastMoveX;
-                    currentHeadY = lastMoveY;
+                    move_head(-targetX * HEAD_SCALE, -targetY * HEAD_SCALE);  // Move back by negating the target
+                    currentHeadX = 0.0f;
+                    currentHeadY = 0.0f;
                     lookState = 5;  // Move to final wait state
                     lookStartTime = time;
                     break;
@@ -247,7 +250,7 @@ int main(int argc, char **argv) {
         // Apply combined rotation to the face (base animation + looking tilt)
         float finalTiltX = sin(time) * maxTilt + lookTiltX;
         float finalTiltY = cos(time * 0.5f) * maxTilt * 0.3f + lookTiltY;
-        vectorRenderer.setFaceRotation(Vec3(lookTiltY, lookTiltX, 0));
+        vectorRenderer.setFaceRotation(Vec3(lookTiltY, -lookTiltX, 0));
 
         // Update blinking
         blinkTimer += animationSpeed;
