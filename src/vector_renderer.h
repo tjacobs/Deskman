@@ -91,9 +91,14 @@ public:
 
 // Helper function to draw a larger dot
 void drawLargeDot(SDL_Renderer* renderer, int x, int y) {
-    // Draw a 2x2 pattern for each point
+    // Draw a 3x3 pattern for each point
+    SDL_RenderDrawPoint(renderer, x-1, y-1);
+    SDL_RenderDrawPoint(renderer, x, y-1);
+    SDL_RenderDrawPoint(renderer, x+1, y-1);
+    SDL_RenderDrawPoint(renderer, x-1, y);
     SDL_RenderDrawPoint(renderer, x, y);
     SDL_RenderDrawPoint(renderer, x+1, y);
+    SDL_RenderDrawPoint(renderer, x-1, y+1);
     SDL_RenderDrawPoint(renderer, x, y+1);
     SDL_RenderDrawPoint(renderer, x+1, y+1);
 }
@@ -118,8 +123,9 @@ public:
         float effectiveRadius = radius * (1.0f / (1.0f + (localPosition.z + facePosition.z) * 0.001f));
         
         // Draw filled circle by projecting each point in 3D space
-        for (int y = -effectiveRadius; y <= effectiveRadius; y++) {
-            for (int x = -effectiveRadius; x <= effectiveRadius; x++) {
+        // Use step size of 2 to reduce number of points
+        for (int y = -effectiveRadius; y <= effectiveRadius; y += 2) {
+            for (int x = -effectiveRadius; x <= effectiveRadius; x += 2) {
                 if (x*x + y*y <= effectiveRadius*effectiveRadius) {
                     // Create point in local space
                     Vec3 point(x, y, 0);
@@ -156,8 +162,9 @@ public:
         float effectiveRadiusY = radiusY * (1.0f / (1.0f + (localPosition.z + facePosition.z) * 0.001f));
         
         // Draw filled ellipse by projecting each point in 3D space
-        for (int y = -effectiveRadiusY; y <= effectiveRadiusY; y++) {
-            for (int x = -effectiveRadiusX; x <= effectiveRadiusX; x++) {
+        // Use step size of 2 to reduce number of points
+        for (int y = -effectiveRadiusY; y <= effectiveRadiusY; y += 2) {
+            for (int x = -effectiveRadiusX; x <= effectiveRadiusX; x += 2) {
                 if ((x*x)/(float)(effectiveRadiusX*effectiveRadiusX) + (y*y)/(float)(effectiveRadiusY*effectiveRadiusY) <= 1.0f) {
                     // Create point in local space
                     Vec3 point(x, y, 0);
