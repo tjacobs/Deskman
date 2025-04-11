@@ -13,40 +13,22 @@
 
 using namespace std;
 
-void look(bool right);
-
 // Global vector renderer
 VectorRenderer vectorRenderer;
 
 int main(int argc, char **argv) {
     // Connect to servos
-    if (open_servos() != 0) printf("Could not open servos\n");
+    open_servos();
 
     // Create window
     bool fullscreen = false;
     #ifdef __linux__
-    fullscreen = true;
+    fullscreen = true; 
     #endif
     if (create_window(fullscreen) != 0) printf("Could not create window\n");
 
     // Create face
     face = create_face(screen_width, screen_height);
-
-    // Create vector shapes for the face
-    Ellipse* leftEye = new Ellipse(45, 120, {255, 255, 255, 255}, {255, 255, 255, 255}, 0.0f);
-    leftEye->localPosition = Vec3(-120, -100, 0);
-    
-    Ellipse* rightEye = new Ellipse(45, 120, {255, 255, 255, 255}, {255, 255, 255, 255}, 0.0f);
-    rightEye->localPosition = Vec3(120, -100, 0);
-    
-    // Create mouth with cutout
-    Ellipse* mouth = new Ellipse(240, 80, {255, 255, 255, 255}, {255, 255, 255, 255}, 0.0f, -40, 180);
-    mouth->localPosition = Vec3(0, 200, 0);
-    
-    // Add shapes to renderer
-    vectorRenderer.addShape(leftEye);
-    vectorRenderer.addShape(rightEye);
-//    vectorRenderer.addShape(mouth);
 
     // Animation variables
     float time = 0.0f;
@@ -118,27 +100,6 @@ int main(int argc, char **argv) {
             }
         }
 
-        // Check for keyboard input from stdin
-        if (cin.rdbuf()->in_avail()) {
-            char input = cin.get();
-            switch(input) {
-                case 'A': // Up arrow
-                    move_head(0, 40); 
-                    update_face(&face, 0, 1);
-                    break;
-                case 'B': // Down arrow
-                    move_head(0, -40);
-                    update_face(&face, 0, -1);
-                    break;
-                case 'C': // Right arrow
-                    move_head(-40, 0);
-                    break;
-                case 'D': // Left arrow
-                    move_head(40, 0);
-                    break;
-            }
-        }
-
         // Update animation
         time += animationSpeed;
         float tiltX = 0; //sin(time) * maxTilt;
@@ -151,7 +112,6 @@ int main(int argc, char **argv) {
             lookTimer = 0.0f;
             lookStartTime = time;
             
-
             // Cycle through directions
             switch(lookDirection) {
                 case 0:  // Left
@@ -267,8 +227,8 @@ int main(int argc, char **argv) {
         // Update eye shapes
         float baseHeight = 120.0f;
         float eyeHeight = baseHeight * (1.0f - blinkProgress * 0.9f);
-        leftEye->radiusY = eyeHeight;
-        rightEye->radiusY = eyeHeight;
+        face.leftEye->radiusY = eyeHeight;
+        face.rightEye->radiusY = eyeHeight;
 
         // Clear the screen
         SDL_SetRenderDrawColor(renderer, 81, 74, 63, 255);

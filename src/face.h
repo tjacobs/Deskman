@@ -1,6 +1,10 @@
+#ifndef FACE_H
+#define FACE_H
+
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 #include <SDL2/SDL_ttf.h>
+#include "vector_renderer.h"
 
 typedef struct {
     // Eye parameters
@@ -22,11 +26,15 @@ typedef struct {
     // Font for text rendering
     TTF_Font* font;
 
+    Ellipse* leftEye;
+    Ellipse* rightEye;
+
 } Face;
 
 extern Face face;
 
 Face create_face(int center_x, int center_y);
-void render_face(SDL_Renderer* renderer, Face* face);
 void update_face(Face* face, int eye_squint, int smile_curve);
-void move_face(int smile);
+void cleanup_face(Face* face);
+
+#endif

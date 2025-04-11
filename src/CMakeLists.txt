@@ -14,6 +14,7 @@ add_executable(${TARGET_NAME}
     speak.cpp
     screen.cpp
     servos.cpp
+    vector_renderer.cpp
     ../servos/SMS_STS.cpp
     ../servos/SCS.cpp
     ../servos/SCSerial.cpp

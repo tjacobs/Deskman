@@ -3,29 +3,31 @@
 #include <stdio.h>
 #include "servos.h"
 #include <iostream>
+#include "vector_renderer.h"
 using namespace std;
 
 // Face
 Face face;
+extern VectorRenderer vectorRenderer;
 
-Face create_face(int screen_width, int screen_height) {
+Face create_face(int center_x, int center_y) {
     Face face;
 
-    // Eyes
-    face.eye_left_x = screen_width / 4;
-    face.eye_left_y = screen_height / 3;
-    face.eye_right_x = (screen_width * 3) / 4;
-    face.eye_right_y = screen_height / 3;
-    face.eye_width = screen_width / 20;
-    face.eye_height = 10;
+    // Create vector shapes for the face
+    face.leftEye = new Ellipse(45, 120, {255, 255, 255, 255}, {255, 255, 255, 255}, 0.0f);
+    face.leftEye->localPosition = Vec3(-120, -100, 0);
+    
+    face.rightEye = new Ellipse(45, 120, {255, 255, 255, 255}, {255, 255, 255, 255}, 0.0f);
+    face.rightEye->localPosition = Vec3(120, -100, 0);
+    
+    // Create mouth with cutout
+    Ellipse* mouth = new Ellipse(240, 80, {255, 255, 255, 255}, {255, 255, 255, 255}, 0.0f, -40, 180);
+    mouth->localPosition = Vec3(0, 200, 0);
 
-    // Mouth
-    face.mouth_x = screen_width / 4;
-    face.mouth_y = (screen_height * 2) / 3;
-    face.mouth_width = screen_width / 2;
-    face.mouth_height = screen_height / 15;
-    face.mouth_smile = screen_height / 30;
-    face.mouth_shape = '_';
+    // Add shapes to renderer
+    vectorRenderer.addShape(face.leftEye);
+    vectorRenderer.addShape(face.rightEye);
+    //vectorRenderer.addShape(mouth);
 
     // Load font
     face.font = TTF_OpenFont("/System/Library/Fonts/Helvetica.ttc", 24);
@@ -111,9 +113,16 @@ void render_face(SDL_Renderer* renderer, Face* face) {
     }
 }
 
-void update_face(Face* face, int eye_height, int smile_curve) {
-    face->eye_height += eye_height;
-    face->mouth_smile += smile_curve;
+void update_face(Face* face, int eye_squint, int smile_curve) {
+    // Update face parameters based on input
+}
+
+void cleanup_face(Face* face) {
+    if (face->font) {
+        TTF_CloseFont(face->font);
+        face->font = NULL;
+    }
+    // Note: We don't delete the eye shapes here as they're managed by the vectorRenderer
 }
 
 void move_face(int smile) {
