@@ -1,6 +1,14 @@
+# -- Deskman init --
+ 
+# Capslock is escape key
+setxkbmap -option caps:escape
 
+# Handy
+alias u='git pull && make && ./robot'
 
-# Run robot
-if [ -z "$DISPLAY" ] && [ "$(tty)" == "/dev/tty1" ]; then
-    ./robot
-fi
+# Change directory
+cd ~/Documents
+cd deskman
+cd src
+cd build
+
