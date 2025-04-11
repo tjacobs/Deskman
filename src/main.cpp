@@ -222,6 +222,19 @@ int main(int argc, char **argv) {
         // Render the vector shapes
         vectorRenderer.render(renderer);
 
+        // Draw coordinate text
+        char coordText[100];
+        sprintf(coordText, "Head X: %.1f  Y: %.1f", currentHeadX * 800, currentHeadY * 200);
+        SDL_Color textColor = {0, 0, 0, 255};
+        SDL_Surface* textSurface = TTF_RenderText_Solid(face.font, coordText, textColor);
+        if (textSurface != NULL) {
+            SDL_Texture* textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
+            SDL_Rect textRect = {10, 10, textSurface->w, textSurface->h};
+            SDL_RenderCopy(renderer, textTexture, NULL, &textRect);
+            SDL_FreeSurface(textSurface);
+            SDL_DestroyTexture(textTexture);
+        }
+
         // Present the updated screen
         SDL_RenderPresent(renderer);
 
