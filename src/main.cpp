@@ -59,9 +59,10 @@ int main(int argc, char **argv) {
 
     // Look direction variables
     float lookTimer = 0.0f;
-    const float lookInterval = 5.0f;  // Look in new direction every 5 seconds
-    const float eyeMoveDuration = 0.5f;  // Time for eyes to move
-    const float headMoveDuration = 1.0f;  // Time for head to follow
+    const float lookInterval = 5.0f;
+    const float eyeMoveDuration = 0.5f;
+    const float HEAD_SCALE = 100.0f;  // Scale factor for head movement
+    const float WAIT_DURATION = 1.0f;  // Time to wait at each position
     bool isLooking = false;
     float targetX = 0.0f;
     float targetY = 0.0f;
@@ -70,7 +71,10 @@ int main(int argc, char **argv) {
     float currentHeadX = 0.0f;
     float currentHeadY = 0.0f;
     float lookStartTime = 0.0f;
+    float lastMoveX = 0.0f;  // Store the last position to return to
+    float lastMoveY = 0.0f;
     int lookDirection = 0;  // 0: left, 1: right, 2: up, 3: down
+    int lookState = 0;  // 0: initial look, 1: wait1, 2: move, 3: wait2, 4: move back, 5: wait3
 
     // Speech
     bool quit = false;
@@ -185,34 +189,58 @@ int main(int argc, char **argv) {
         if (isLooking) {
             float lookTime = time - lookStartTime;
             
-            // Tilt face first
-            if (lookTime < eyeMoveDuration) {
-                float t = lookTime / eyeMoveDuration;
-                lookTiltX = targetX * t * 20.0f;  // Up to 20 degrees tilt
-                lookTiltY = targetY * t * 20.0f;
-            } else {
-                lookTiltX = targetX * 20.0f;
-                lookTiltY = targetY * 20.0f;
-                
-                // Then move head
-                if (lookTime < (eyeMoveDuration + headMoveDuration)) {
-                    float t = (lookTime - eyeMoveDuration) / headMoveDuration;
-                    currentHeadX = targetX * t;
-                    currentHeadY = targetY * t;
-                    
-                    // Move servos
-                    //move_head(currentHeadX * 100, currentHeadY * 100);
+            switch (lookState) {
+                case 0:  // Initial look with eye movement
+                    if (lookTime < eyeMoveDuration) {
+                        float t = lookTime / eyeMoveDuration;
+                        lookTiltX = targetX * t * 20.0f;
+                        lookTiltY = targetY * t * 20.0f;
+                    } else {
+                        lookState = 1;  // Move to first wait state
+                        lookStartTime = time;  // Reset timer for next state
+                    }
+                    break;
 
-                    // Gradually reduce tilt as head moves
-                    lookTiltX *= (1.0f - t);
-                    lookTiltY *= (1.0f - t);
-                } else {
+                case 1:  // Wait at look position
+                    if (lookTime >= WAIT_DURATION) {
+                        lookState = 2;  // Move to head movement state
+                        lookStartTime = time;
+                        lastMoveX = currentHeadX;  // Store current position to return to
+                        lastMoveY = currentHeadY;
+                    }
+                    break;
+
+                case 2:  // Move head
+                    move_head(targetX * HEAD_SCALE, targetY * HEAD_SCALE);
                     currentHeadX = targetX;
                     currentHeadY = targetY;
-                    lookTiltX = 0.0f;
-                    lookTiltY = 0.0f;
-                    isLooking = false;
-                }
+                    lookState = 3;  // Move to second wait state
+                    lookStartTime = time;
+                    break;
+
+                case 3:  // Wait at new position
+                    if (lookTime >= WAIT_DURATION) {
+                        lookState = 4;  // Move to return movement state
+                        lookStartTime = time;
+                    }
+                    break;
+
+                case 4:  // Move back
+                    move_head(lastMoveX * HEAD_SCALE, lastMoveY * HEAD_SCALE);
+                    currentHeadX = lastMoveX;
+                    currentHeadY = lastMoveY;
+                    lookState = 5;  // Move to final wait state
+                    lookStartTime = time;
+                    break;
+
+                case 5:  // Final wait before ending cycle
+                    if (lookTime >= WAIT_DURATION) {
+                        lookTiltX = 0.0f;
+                        lookTiltY = 0.0f;
+                        isLooking = false;
+                        lookState = 0;  // Reset state for next cycle
+                    }
+                    break;
             }
         }
 
@@ -253,7 +281,7 @@ int main(int argc, char **argv) {
 
         // Draw coordinate text
         char coordText[100];
-        snprintf(coordText, sizeof(coordText), "Head X: %.1f  Y: %.1f", currentHeadX * 100, currentHeadY * 100);
+        snprintf(coordText, sizeof(coordText), "Head X: %.1f  Y: %.1f", currentHeadX * HEAD_SCALE, currentHeadY * HEAD_SCALE);
         SDL_Color textColor = {0, 0, 0, 255};
         SDL_Surface* textSurface = TTF_RenderText_Solid(face.font, coordText, textColor);
         if (textSurface != NULL) {
