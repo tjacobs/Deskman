@@ -70,6 +70,7 @@ int main(int argc, char **argv) {
     float currentHeadX = 0.0f;
     float currentHeadY = 0.0f;
     float lookStartTime = 0.0f;
+    int lookDirection = 0;  // 0: left, 1: right, 2: up, 3: down
 
     // Speech
     bool quit = false;
@@ -142,6 +143,26 @@ int main(int argc, char **argv) {
             // Choose random look target (-1 to 1 range)
             targetX = (rand() % 200 - 100) / 100.0f;
             targetY = (rand() % 200 - 100) / 100.0f;
+            // Cycle through directions
+            switch(lookDirection) {
+                case 0:  // Left
+                    targetX = -1.0f;
+                    targetY = 0.0f;
+                    break;
+                case 1:  // Right
+                    targetX = 1.0f;
+                    targetY = 0.0f;
+                    break;
+                case 2:  // Up
+                    targetX = 0.0f;
+                    targetY = -1.0f;
+                    break;
+                case 3:  // Down
+                    targetX = 0.0f;
+                    targetY = 1.0f;
+                    break;
+            }
+            lookDirection = (lookDirection + 1) % 4;
             
             // Reset current positions
             lookTiltX = 0.0f;
