@@ -33,12 +33,14 @@ int main(int argc, char **argv) {
     face = create_face(screen_width, screen_height);
 
     // Create vector shapes for the face
-    Circle* leftEye = new Circle(30, {0, 0, 0, 255}, {255, 255, 255, 255}, 0.0f);
-    leftEye->localPosition = Vec3(-100, -50, 0);
-    Circle* rightEye = new Circle(30, {0, 0, 0, 255}, {255, 255, 255, 255}, 0.0f);
-    rightEye->localPosition = Vec3(100, -50, 0);
-    Ellipse* mouth = new Ellipse(120, 40, {0, 0, 0, 255}, {255, 255, 255, 255}, 0.0f);
-    mouth->localPosition = Vec3(0, 50, 0);
+    Ellipse* leftEye = new Ellipse(60, 80, {0, 0, 0, 255}, {255, 255, 255, 255}, 0.0f);
+    leftEye->localPosition = Vec3(-200, -100, 0);
+    
+    Ellipse* rightEye = new Ellipse(60, 80, {0, 0, 0, 255}, {255, 255, 255, 255}, 0.0f);
+    rightEye->localPosition = Vec3(200, -100, 0);
+    
+    Ellipse* mouth = new Ellipse(240, 80, {0, 0, 0, 255}, {255, 255, 255, 255}, 0.0f);
+    mouth->localPosition = Vec3(0, 200, 0);
     
     // Add shapes to renderer
     vectorRenderer.addShape(leftEye);
@@ -49,6 +51,10 @@ int main(int argc, char **argv) {
     float time = 0.0f;
     const float animationSpeed = 0.05f;
     const float maxTilt = 30.0f;
+    const float blinkSpeed = 4.0f;  // Increased speed for faster blinking
+    const float blinkInterval = 10.0f;  // Time between blinks in seconds
+    float blinkTimer = 0.0f;
+    bool isBlinking = false;
 
     // Speech
     bool quit = false;
@@ -131,6 +137,28 @@ int main(int argc, char **argv) {
         float tiltX = sin(time) * maxTilt;
         float tiltY = cos(time * 0.7f) * maxTilt * 0.5f;
 
+        // Update blinking
+        blinkTimer += animationSpeed;
+        if (!isBlinking && blinkTimer >= blinkInterval) {
+            isBlinking = true;
+            blinkTimer = 0.0f;
+        }
+
+        // Animate eyes
+        float blinkProgress = 0.0f;
+        if (isBlinking) {
+            blinkProgress = sin(blinkTimer * blinkSpeed);
+            if (blinkProgress < 0) {
+                isBlinking = false;
+                blinkProgress = 0.0f;
+            }
+        }
+
+        // Update eye shapes
+        float eyeHeight = 40.0f * (1.0f - blinkProgress * 0.9f);  // Reduce height by up to 90%
+        leftEye->radiusY = eyeHeight;
+        rightEye->radiusY = eyeHeight;
+
         // Apply rotation to the entire face
         vectorRenderer.setFaceRotation(Vec3(tiltX, tiltY, 0));
 
@@ -139,7 +167,8 @@ int main(int argc, char **argv) {
         SDL_RenderClear(renderer);
 
         // Render the face
-        render_face(renderer, &face);
+        //render_face(renderer, &face);
+
         // Render the vector shapes
         vectorRenderer.render(renderer);
 
