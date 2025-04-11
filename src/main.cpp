@@ -169,7 +169,7 @@ int main(int argc, char **argv) {
                     currentHeadY = targetY * t;
                     
                     // Move servos
-                    move_head(currentHeadX * 800, currentHeadY * 200);
+                    //move_head(currentHeadX * 800, currentHeadY * 200);
 
                     // Gradually reduce tilt as head moves
                     lookTiltX *= (1.0f - t);
@@ -213,7 +213,7 @@ int main(int argc, char **argv) {
         rightEye->radiusY = eyeHeight;
 
         // Clear the screen
-        SDL_SetRenderDrawColor(renderer, 181, 174, 163, 255);
+        SDL_SetRenderDrawColor(renderer, 81, 74, 63, 255);
         SDL_RenderClear(renderer);
 
         // Render the face
