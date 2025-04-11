@@ -151,9 +151,6 @@ int main(int argc, char **argv) {
             lookTimer = 0.0f;
             lookStartTime = time;
             
-            // Choose random look target (-1 to 1 range)
-            //targetX = (rand() % 200 - 100) / 100.0f;
-            //targetY = (rand() % 200 - 100) / 100.0f;
 
             // Cycle through directions
             switch(lookDirection) {
@@ -175,6 +172,10 @@ int main(int argc, char **argv) {
                     break;
             }
             lookDirection = (lookDirection + 1) % 4;
+
+            // Choose random look target (-1 to 1 range)
+            targetX = (rand() % 200 - 100) / 100.0f;
+            targetY = (rand() % 200 - 100) / 100.0f;
             
             // Reset current positions
             lookTiltX = 0.0f;
