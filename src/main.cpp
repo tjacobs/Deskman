@@ -74,8 +74,14 @@ int main(int argc, char **argv) {
 
     // Speech
     bool quit = false;
-    thread speech_thread([argc, argv, &quit]() {
-        //speak(quit);
+    bool speak_go = false;
+    thread speech_thread([argc, argv, &quit, &speak_go]() {
+        while (!speak_go) {
+            this_thread::sleep_for(chrono::milliseconds(100));
+            if (quit) return;
+        }
+        cout << "Speaking" << endl;
+        speak(quit);
     });
 
     // Movement
@@ -100,11 +106,13 @@ int main(int argc, char **argv) {
                 if (event.key.keysym.sym == SDLK_DOWN)  { move_head(0, -40); update_face(&face, 0, -1); }
                 if (event.key.keysym.sym == SDLK_RIGHT) { move_head(-40, 0); }
                 if (event.key.keysym.sym == SDLK_LEFT)  { move_head(40, 0); }
-                if (event.key.keysym.sym == SDLK_SPACE) { move_head(0, -500); update_face(&face, 5, 0); }
                 if (event.key.keysym.sym == SDLK_j)     { move_head(900, 0); update_face(&face, 5, 0); }
                 if (event.key.keysym.sym == SDLK_l)     { move_head(-900, 0); update_face(&face, -5, 0); }
                 if (event.key.keysym.sym == SDLK_i)     { move_head(0, 200); update_face(&face, 5, 0); }
                 if (event.key.keysym.sym == SDLK_k)     { move_head(0, -200); update_face(&face, -5, 0); }
+
+                // Speak
+                if (event.key.keysym.sym == SDLK_SPACE) { speak_go = true; }
             }
         }
 
@@ -128,6 +136,7 @@ int main(int argc, char **argv) {
                     break;
             }
         }
+
         // Update animation
         time += animationSpeed;
         float tiltX = 0; //sin(time) * maxTilt;
@@ -141,8 +150,9 @@ int main(int argc, char **argv) {
             lookStartTime = time;
             
             // Choose random look target (-1 to 1 range)
-            targetX = (rand() % 200 - 100) / 100.0f;
-            targetY = (rand() % 200 - 100) / 100.0f;
+            //targetX = (rand() % 200 - 100) / 100.0f;
+            //targetY = (rand() % 200 - 100) / 100.0f;
+
             // Cycle through directions
             switch(lookDirection) {
                 case 0:  // Left
@@ -171,6 +181,7 @@ int main(int argc, char **argv) {
             currentHeadY = 0.0f;
         }
 
+        // Look
         if (isLooking) {
             float lookTime = time - lookStartTime;
             
@@ -190,7 +201,7 @@ int main(int argc, char **argv) {
                     currentHeadY = targetY * t;
                     
                     // Move servos
-                    //move_head(currentHeadX * 800, currentHeadY * 200);
+                    //move_head(currentHeadX * 100, currentHeadY * 100);
 
                     // Gradually reduce tilt as head moves
                     lookTiltX *= (1.0f - t);
@@ -208,7 +219,7 @@ int main(int argc, char **argv) {
         // Apply combined rotation to the face (base animation + looking tilt)
         float finalTiltX = sin(time) * maxTilt + lookTiltX;
         float finalTiltY = cos(time * 0.5f) * maxTilt * 0.3f + lookTiltY;
-        vectorRenderer.setFaceRotation(Vec3(lookTiltX, lookTiltY, 0));
+        vectorRenderer.setFaceRotation(Vec3(lookTiltY, lookTiltX, 0));
 
         // Update blinking
         blinkTimer += animationSpeed;
@@ -238,14 +249,11 @@ int main(int argc, char **argv) {
         SDL_RenderClear(renderer);
 
         // Render the face
-        //render_face(renderer, &face);
-
-        // Render the vector shapes
         vectorRenderer.render(renderer);
 
         // Draw coordinate text
         char coordText[100];
-        sprintf(coordText, "Head X: %.1f  Y: %.1f", currentHeadX * 800, currentHeadY * 200);
+        snprintf(coordText, sizeof(coordText), "Head X: %.1f  Y: %.1f", currentHeadX * 100, currentHeadY * 100);
         SDL_Color textColor = {0, 0, 0, 255};
         SDL_Surface* textSurface = TTF_RenderText_Solid(face.font, coordText, textColor);
         if (textSurface != NULL) {
