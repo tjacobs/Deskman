@@ -39,7 +39,8 @@ int main(int argc, char **argv) {
     Ellipse* rightEye = new Ellipse(60, 160, {0, 0, 0, 255}, {255, 255, 255, 255}, 0.0f);
     rightEye->localPosition = Vec3(200, -100, 0);
     
-    Ellipse* mouth = new Ellipse(240, 80, {0, 0, 0, 255}, {255, 255, 255, 255}, 0.0f);
+    // Create mouth with cutout
+    Ellipse* mouth = new Ellipse(240, 80, {0, 0, 0, 255}, {255, 255, 255, 255}, 0.0f, -40, 180);
     mouth->localPosition = Vec3(0, 200, 0);
     
     // Add shapes to renderer

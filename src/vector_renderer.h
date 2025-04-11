@@ -144,11 +144,14 @@ public:
 class Ellipse : public VectorShape {
 public:
     float radiusX, radiusY;
+    float cutoutY;  // Y position of cutout center
+    float cutoutHeight;  // Height of cutout
     
     Ellipse(float radiusX = 100, float radiusY = 50, 
             SDL_Color fillColor = {0, 0, 0, 255},
-            SDL_Color strokeColor = {0, 0, 0, 255}, float strokeWidth = 1.0f)
-        : radiusX(radiusX), radiusY(radiusY) {
+            SDL_Color strokeColor = {0, 0, 0, 255}, float strokeWidth = 1.0f,
+            float cutoutY = 0, float cutoutHeight = 0)
+        : radiusX(radiusX), radiusY(radiusY), cutoutY(cutoutY), cutoutHeight(cutoutHeight) {
         this->fillColor = fillColor;
         this->strokeColor = strokeColor;
         this->strokeWidth = strokeWidth;
@@ -165,7 +168,20 @@ public:
         // Use step size of 2 to reduce number of points
         for (int y = -effectiveRadiusY; y <= effectiveRadiusY; y += 2) {
             for (int x = -effectiveRadiusX; x <= effectiveRadiusX; x += 2) {
-                if ((x*x)/(float)(effectiveRadiusX*effectiveRadiusX) + (y*y)/(float)(effectiveRadiusY*effectiveRadiusY) <= 1.0f) {
+                // Calculate if point is in the main ellipse
+                float ellipseValue = (x*x)/(float)(effectiveRadiusX*effectiveRadiusX) + (y*y)/(float)(effectiveRadiusY*effectiveRadiusY);
+                
+                // Calculate if point is in the cutout ellipse
+                float cutoutValue = 0.0f;
+                if (cutoutHeight > 0) {
+                    float cutoutRadiusY = cutoutHeight / 2.0f;
+                    float cutoutRadiusX = effectiveRadiusX * (cutoutRadiusY / effectiveRadiusY);
+                    cutoutValue = (x*x)/(float)(cutoutRadiusX*cutoutRadiusX) + 
+                                 ((y-cutoutY)*(y-cutoutY))/(float)(cutoutRadiusY*cutoutRadiusY);
+                }
+                
+                // Draw point if it's in the main ellipse but not in the cutout
+                if (ellipseValue <= 1.0f && (cutoutHeight == 0 || cutoutValue > 1.0f)) {
                     // Create point in local space
                     Vec3 point(x, y, 0);
                     // Add shape position and face position
