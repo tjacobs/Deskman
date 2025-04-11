@@ -61,8 +61,8 @@ int main(int argc, char **argv) {
     float lookTimer = 0.0f;
     const float lookInterval = 5.0f;
     const float eyeMoveDuration = 0.5f;
-    const float HEAD_SCALE = 100.0f;  // Scale factor for head movement
-    const float WAIT_DURATION = 0.2f;  // Time to wait at each position
+    const float HEAD_SCALE = 200.0f;  // Scale factor for head movement
+    const float WAIT_DURATION = 1.2f; // Time to wait at each position
     bool isLooking = false;
     float targetX = 0.0f;
     float targetY = 0.0f;
@@ -194,15 +194,8 @@ int main(int argc, char **argv) {
                         lookTiltX = targetX * t * 20.0f;
                         lookTiltY = targetY * t * 20.0f;
                     } else {
-                        lookState = 2;  // Move to first wait state
+                        lookState = 2;
                         lookStartTime = time;  // Reset timer for next state
-                    }
-                    break;
-
-                case 1:  // Wait at look position
-                    if (lookTime >= WAIT_DURATION) {
-                        lookState = 2;  // Move to head movement state
-                        lookStartTime = time;
                     }
                     break;
 
@@ -210,6 +203,7 @@ int main(int argc, char **argv) {
                     move_head(targetX * HEAD_SCALE, targetY * HEAD_SCALE);
                     currentHeadX = targetX;
                     currentHeadY = targetY;
+
                     // Start transitioning eyes back
                     lookState = 3;
                     lookStartTime = time;
@@ -250,7 +244,7 @@ int main(int argc, char **argv) {
         // Apply combined rotation to the face (base animation + looking tilt)
         float finalTiltX = sin(time) * maxTilt + lookTiltX;
         float finalTiltY = cos(time * 0.5f) * maxTilt * 0.3f + lookTiltY;
-        vectorRenderer.setFaceRotation(Vec3(lookTiltY, -lookTiltX, 0));
+        vectorRenderer.setFaceRotation(Vec3(-lookTiltY, lookTiltX, 0));
 
         // Update blinking
         blinkTimer += animationSpeed;
