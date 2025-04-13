@@ -1,6 +1,9 @@
 .DS_Store
+__pycache__
 src/build/
 src/local/models/
 src/keys.*
 src/py/keys.*
+src/py/venv*
 src/robot
+*.log
