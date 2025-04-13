@@ -131,36 +131,48 @@ def app_callback(pad, info, user_data):
 
     # Parse the detections
     detection_count = 0
+    largest_box = None
+    largest_area = 0
+    
+    # First pass: find the largest person box
     for detection in detections:
         label = detection.get_label()
-        bbox = detection.get_bbox()
-        confidence = detection.get_confidence()
         if label == "person":
-            # Get track ID
-            track_id = 0
-            track = detection.get_objects_typed(hailo.HAILO_UNIQUE_ID)
-            x = bbox.xmin()
-            y = bbox.ymin()
+            bbox = detection.get_bbox()
             w = bbox.width()
             h = bbox.height()
-            x_center = x + w/2
-            y_center = y + h/2
-            x_move = 0.5 - x_center 
-            y_move = 0.5 - y_center
-            
-            # Move the head based on the calculated values
-            if user_data.servos_initialized:
-                # Apply damping to the movement
-                servo_x, servo_y = user_data.damp_movement(x_move, y_move)
-                move_head(servo_x, servo_y)
-
-            # Print 
-            if len(track) == 1:
-                track_id = track[0].get_id()
-            string_to_print += (f"X: {x_move} Y: {y_move}\n")
-            #string_to_print += (f"X: {x} Y: {y} W: {w} H: {h}\n")
-            #string_to_print += (f"Detection: ID: {track_id} Label: {label} Confidence: {confidence:.2f}\n")
+            area = w * h
+            if area > largest_area:
+                largest_area = area
+                largest_box = detection
             detection_count += 1
+
+    # Second pass: only process the largest box
+    if largest_box is not None:
+        bbox = largest_box.get_bbox()
+        x = bbox.xmin()
+        y = bbox.ymin()
+        w = bbox.width()
+        h = bbox.height()
+        x_center = x + w/2
+        y_center = y + h/2
+        x_move = 0.5 - x_center 
+        y_move = 0.5 - y_center
+        
+        # Move the head based on the calculated values
+        if user_data.servos_initialized:
+            # Apply damping to the movement
+            servo_x, servo_y = user_data.damp_movement(x_move, y_move)
+            move_head(servo_x, servo_y)
+
+        # Get track ID
+        track_id = 0
+        track = largest_box.get_objects_typed(hailo.HAILO_UNIQUE_ID)
+        if len(track) == 1:
+            track_id = track[0].get_id()
+        string_to_print += (f"X: {x_move} Y: {y_move}\n")
+        #string_to_print += (f"X: {x} Y: {y} W: {w} H: {h}\n")
+        #string_to_print += (f"Detection: ID: {track_id} Label: person Confidence: {largest_box.get_confidence():.2f}\n")
 
     if user_data.use_frame:
         # Note: using imshow will not work here, as the callback function is not running in the main thread
