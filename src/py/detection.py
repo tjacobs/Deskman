@@ -28,6 +28,13 @@ class user_app_callback_class(app_callback_class):
             self.servos_initialized = False
         else:
             self.servos_initialized = True
+        
+        # Damping parameters
+        self.dead_zone = 0.1  # Ignore movements smaller than this
+        self.smoothing_factor = 0.3  # How much to smooth the movement (0-1, higher = more smoothing)
+        self.max_movement = 0.1  # Maximum movement per frame
+        self.last_x = 0.5  # Last x position
+        self.last_y = 0.5  # Last y position
 
     def new_function(self):  # New function example
         return "The meaning of life is: "
@@ -35,6 +42,36 @@ class user_app_callback_class(app_callback_class):
     def __del__(self):
         if self.servos_initialized:
             cleanup()
+
+    def damp_movement(self, x_move, y_move):
+        """Apply damping to the movement values to reduce oscillation"""
+        # Convert to absolute positions
+        target_x = 0.5 + x_move
+        target_y = 0.5 + y_move
+        
+        # Calculate movement distance
+        dx = target_x - self.last_x
+        dy = target_y - self.last_y
+        
+        # Apply dead zone
+        if abs(dx) < self.dead_zone:
+            dx = 0
+        if abs(dy) < self.dead_zone:
+            dy = 0
+            
+        # Limit maximum movement
+        dx = max(min(dx, self.max_movement), -self.max_movement)
+        dy = max(min(dy, self.max_movement), -self.max_movement)
+        
+        # Apply smoothing
+        new_x = self.last_x + dx * self.smoothing_factor
+        new_y = self.last_y + dy * self.smoothing_factor
+        
+        # Update last positions
+        self.last_x = new_x
+        self.last_y = new_y
+        
+        return new_x, new_y
 
 # -----------------------------------------------------------------------------------------------
 # User-defined callback function
@@ -86,10 +123,8 @@ def app_callback(pad, info, user_data):
             
             # Move the head based on the calculated values
             if user_data.servos_initialized:
-                # Convert the move values to servo positions (0-1 range)
-                # x_move and y_move are in -0.5 to 0.5 range, so we add 0.5 to get 0-1 range
-                servo_x = 0.5 + x_move
-                servo_y = 0.5 + y_move
+                # Apply damping to the movement
+                servo_x, servo_y = user_data.damp_movement(x_move, y_move)
                 move_head(servo_x, servo_y)
             
             if len(track) == 1:
