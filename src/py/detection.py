@@ -176,11 +176,7 @@ if __name__ == "__main__":
     if len(sys.argv) == 1:
         sys.argv.extend([
             "--input", "rpi",
-#            "--hef", FACE_MODEL_PATH,
-            "--sync",  # Enable synchronization to prevent frame drops
-            "--fps", "15",  # Set target frame rate
-            "--no-display",  # Disable display to reduce CPU usage
-            "--batch-size", "1"  # Use minimal batch size
+#            "--hef", FACE_MODEL_PATH
         ])
     
     # Initialize the app
