@@ -6,7 +6,6 @@ import numpy as np
 import cv2
 import hailo
 import sys
-import requests
 import subprocess
 from servo import setup_servos, move_head, cleanup
 
@@ -19,23 +18,27 @@ from hailo_apps_infra.detection_pipeline import GStreamerDetectionApp
 
 # Model configuration
 MODEL_DIR = os.path.expanduser("~/.hailo/models")
-FACE_MODEL_URL = "https://hailo-model-zoo.s3.eu-west-2.amazonaws.com/ModelZoo/Compiled/v2.6.0/face_detection.hef"
-FACE_MODEL_PATH = os.path.join(MODEL_DIR, "face_detection.hef")
+FACE_MODEL_NAME = "face_detection"
+FACE_MODEL_PATH = os.path.join(MODEL_DIR, f"{FACE_MODEL_NAME}.hef")
 
 def download_face_model():
-    """Download the face detection model if it doesn't exist"""
+    """Download the face detection model using Hailo CLI"""
     if not os.path.exists(FACE_MODEL_PATH):
         print("Downloading face detection model...")
         os.makedirs(MODEL_DIR, exist_ok=True)
         
-        # Download the model
-        response = requests.get(FACE_MODEL_URL, stream=True)
-        response.raise_for_status()
-        
-        with open(FACE_MODEL_PATH, 'wb') as f:
-            for chunk in response.iter_content(chunk_size=8192):
-                f.write(chunk)
-        print("Model downloaded successfully")
+        try:
+            # Use Hailo CLI to download the model
+            subprocess.run([
+                "hailo", "model", "download",
+                "--model-name", FACE_MODEL_NAME,
+                "--output-dir", MODEL_DIR
+            ], check=True)
+            print("Model downloaded successfully")
+        except subprocess.CalledProcessError as e:
+            print(f"Error downloading model: {e}")
+            print("Please make sure you have the Hailo CLI installed and are logged in")
+            sys.exit(1)
     else:
         print("Face detection model already exists")
 
