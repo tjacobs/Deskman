@@ -125,7 +125,7 @@ def app_callback(pad, info, user_data):
         label = detection.get_label()
         bbox = detection.get_bbox()
         confidence = detection.get_confidence()
-        if label == "face":  # Changed from "person" to "face"
+        if label == "person":
             # Get track ID
             track_id = 0
             track = detection.get_objects_typed(hailo.HAILO_UNIQUE_ID)
