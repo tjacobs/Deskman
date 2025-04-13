@@ -6,6 +6,8 @@ import numpy as np
 import cv2
 import hailo
 import sys
+import requests
+import subprocess
 from servo import setup_servos, move_head, cleanup
 
 from hailo_apps_infra.hailo_rpi_common import (
@@ -14,6 +16,28 @@ from hailo_apps_infra.hailo_rpi_common import (
     app_callback_class,
 )
 from hailo_apps_infra.detection_pipeline import GStreamerDetectionApp
+
+# Model configuration
+MODEL_DIR = os.path.expanduser("~/.hailo/models")
+FACE_MODEL_URL = "https://hailo-model-zoo.s3.eu-west-2.amazonaws.com/ModelZoo/Compiled/v2.6.0/face_detection.hef"
+FACE_MODEL_PATH = os.path.join(MODEL_DIR, "face_detection.hef")
+
+def download_face_model():
+    """Download the face detection model if it doesn't exist"""
+    if not os.path.exists(FACE_MODEL_PATH):
+        print("Downloading face detection model...")
+        os.makedirs(MODEL_DIR, exist_ok=True)
+        
+        # Download the model
+        response = requests.get(FACE_MODEL_URL, stream=True)
+        response.raise_for_status()
+        
+        with open(FACE_MODEL_PATH, 'wb') as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                f.write(chunk)
+        print("Model downloaded successfully")
+    else:
+        print("Face detection model already exists")
 
 # -----------------------------------------------------------------------------------------------
 # User-defined class to be used in the callback function
@@ -149,13 +173,18 @@ def app_callback(pad, info, user_data):
     return Gst.PadProbeReturn.OK
 
 if __name__ == "__main__":
+    # Download the face detection model
+    download_face_model()
+    
     # Create an instance of the user app callback class
     user_data = user_app_callback_class()
     
-    # Add rpi as default input source if no input source is specified
+    # Add default arguments if none are specified
     if len(sys.argv) == 1:
-        sys.argv.append("--input")
-        sys.argv.append("rpi")
+        sys.argv.extend([
+            "--input", "rpi",
+            "--hef", FACE_MODEL_PATH
+        ])
     
     # Initialize the app
     app = GStreamerDetectionApp(app_callback, user_data)
