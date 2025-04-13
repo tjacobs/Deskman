@@ -5,6 +5,7 @@ import os
 import numpy as np
 import cv2
 import hailo
+import sys
 from servo import setup_servos, move_head, cleanup
 
 from hailo_apps_infra.hailo_rpi_common import (
@@ -150,6 +151,12 @@ def app_callback(pad, info, user_data):
 if __name__ == "__main__":
     # Create an instance of the user app callback class
     user_data = user_app_callback_class()
-    # Initialize the app with Raspberry Pi camera as default input
-    app = GStreamerDetectionApp(app_callback, user_data, input_source="rpi")
+    
+    # Add rpi as default input source if no input source is specified
+    if len(sys.argv) == 1:
+        sys.argv.append("--input")
+        sys.argv.append("rpi")
+    
+    # Initialize the app
+    app = GStreamerDetectionApp(app_callback, user_data)
     app.run()
