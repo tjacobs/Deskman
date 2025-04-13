@@ -1,26 +1,21 @@
-import gi
+import gi # GStreamer
 gi.require_version('Gst', '1.0')
 from gi.repository import Gst, GLib
 import os
-import numpy as np
+import sys
 import cv2
 import hailo
-import sys
 import requests
 import subprocess
-from servo import setup_servos, move_head, cleanup
-
-from hailo_apps_infra.hailo_rpi_common import (
-    get_caps_from_pad,
-    get_numpy_from_buffer,
-    app_callback_class,
-)
+import numpy as np
 from hailo_apps_infra.detection_pipeline import GStreamerDetectionApp
+from servo import setup_servos, move_head, cleanup
+from hailo_apps_infra.hailo_rpi_common import get_caps_from_pad, get_numpy_from_buffer, app_callback_class
 
 # Model configuration
 MODEL_DIR = os.path.expanduser("~/.hailo/models")
-FACE_MODEL_URL = "https://hailo-model-zoo.s3.eu-west-2.amazonaws.com/ModelZoo/Compiled/v2.15.0/hailo8/yolov5m.hef"
-FACE_MODEL_PATH = os.path.join(MODEL_DIR, "face_detection.hef")
+FACE_MODEL_URL = "https://hailo-model-zoo.s3.eu-west-2.amazonaws.com/ModelZoo/Compiled/v2.15.0/hailo8l/tiny_yolov4.hef"
+FACE_MODEL_PATH = os.path.join(MODEL_DIR, "tiny_yolov4.hef")
 
 def download_face_model():
     """Download the face detection model if it doesn't exist"""
@@ -31,7 +26,6 @@ def download_face_model():
         # Download the model
         response = requests.get(FACE_MODEL_URL, stream=True)
         response.raise_for_status()
-        
         with open(FACE_MODEL_PATH, 'wb') as f:
             for chunk in response.iter_content(chunk_size=8192):
                 f.write(chunk)
@@ -39,9 +33,9 @@ def download_face_model():
     else:
         print("Face detection model already exists")
 
-# -----------------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------
 # User-defined class to be used in the callback function
-# -----------------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------
 # Inheritance from the app_callback_class
 class user_app_callback_class(app_callback_class):
     def __init__(self):
@@ -56,7 +50,7 @@ class user_app_callback_class(app_callback_class):
         
         # Damping parameters
         self.dead_zone = 0.1  # Ignore movements smaller than this
-        self.smoothing_factor = 0.3  # How much to smooth the movement (0-1, higher = more smoothing)
+        self.smoothing_factor = 0.3  # How much to smooth the movement 
         self.max_movement = 0.1  # Maximum movement per frame
         self.last_x = 0.5  # Last x position
         self.last_y = 0.5  # Last y position
@@ -95,14 +89,15 @@ class user_app_callback_class(app_callback_class):
         
         return new_x, new_y
 
-# -----------------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------
 # User-defined callback function
-# -----------------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------
 
-# This is the callback function that will be called when data is available from the pipeline
+# This will be called when data is available from the pipeline
 def app_callback(pad, info, user_data):
     # Get the GstBuffer from the probe info
     buffer = info.get_buffer()
+
     # Check if the buffer is valid
     if buffer is None:
         return Gst.PadProbeReturn.OK
@@ -114,7 +109,7 @@ def app_callback(pad, info, user_data):
     # Get the caps from the pad
     format, width, height = get_caps_from_pad(pad)
 
-    # If the user_data.use_frame is set to True, we can get the video frame from the buffer
+    # If user_data.use_frame, we can get the video frame from the buffer
     frame = None
     if user_data.use_frame and format is not None and width is not None and height is not None:
         # Get video frame
@@ -148,13 +143,15 @@ def app_callback(pad, info, user_data):
                 # Apply damping to the movement
                 servo_x, servo_y = user_data.damp_movement(x_move, y_move)
                 move_head(servo_x, servo_y)
-            
+
+            # Print 
             if len(track) == 1:
                 track_id = track[0].get_id()
             string_to_print += (f"X: {x_move} Y: {y_move}\n")
             #string_to_print += (f"X: {x} Y: {y} W: {w} H: {h}\n")
             #string_to_print += (f"Detection: ID: {track_id} Label: {label} Confidence: {confidence:.2f}\n")
             detection_count += 1
+
     if user_data.use_frame:
         # Note: using imshow will not work here, as the callback function is not running in the main thread
         # Let's print the detection count to the frame
@@ -180,9 +177,10 @@ if __name__ == "__main__":
     if len(sys.argv) == 1:
         sys.argv.extend([
             "--input", "rpi",
-            "--hef", FACE_MODEL_PATH
+#            "--hef", FACE_MODEL_PATH
         ])
     
     # Initialize the app
     app = GStreamerDetectionApp(app_callback, user_data)
     app.run()
+
