@@ -19,7 +19,7 @@ from hailo_apps_infra.detection_pipeline import GStreamerDetectionApp
 
 # Model configuration
 MODEL_DIR = os.path.expanduser("~/.hailo/models")
-FACE_MODEL_URL = "https://hailo-model-zoo.s3.eu-west-2.amazonaws.com/ModelZoo/Compiled/v2.6.0/face_detection.hef"
+FACE_MODEL_URL = "https://hailo-model-zoo.s3.eu-west-2.amazonaws.com/ModelZoo/Compiled/v2.15.0/hailo8/yolov5m.hef"
 FACE_MODEL_PATH = os.path.join(MODEL_DIR, "face_detection.hef")
 
 def download_face_model():
