@@ -1,15 +1,14 @@
 import gi # GStreamer
 gi.require_version('Gst', '1.0')
-from gi.repository import Gst, GLib
+from gi.repository import Gst
 import os
 import sys
 import cv2
 import hailo
 import requests
-import subprocess
 import numpy as np
-from hailo_apps_infra.detection_pipeline import GStreamerDetectionApp
 from servo import setup_servos, move_head, cleanup
+from hailo_apps_infra.detection_pipeline import GStreamerDetectionApp
 from hailo_apps_infra.hailo_rpi_common import get_caps_from_pad, get_numpy_from_buffer, app_callback_class
 
 # Model configuration
