@@ -29,11 +29,13 @@ BAUDRATE                    = 115200
 DEVICENAME                  = '/dev/ttyAMA0'
 
 # Servo limits
-SCS_MINIMUM_POSITION_VALUE  = 100
-SCS_MAXIMUM_POSITION_VALUE  = 4000
+SCS1_MINIMUM_POSITION_VALUE  = 0
+SCS1_MAXIMUM_POSITION_VALUE  = 2000
+SCS2_MINIMUM_POSITION_VALUE  = 1400
+SCS2_MAXIMUM_POSITION_VALUE  = 1900
 SCS_MOVING_STATUS_THRESHOLD = 20
 SCS_MOVING_SPEED            = 255
-SCS_MOVING_ACC              = 255
+SCS_MOVING_ACC              = 2
 protocol_end                = 0
 
 # Global variables for servo control
@@ -109,12 +111,12 @@ def move_head(x, y):
         return False
 
     # Convert normalized coordinates to servo positions
-    x_pos = int(SCS_MINIMUM_POSITION_VALUE + x * (SCS_MAXIMUM_POSITION_VALUE - SCS_MINIMUM_POSITION_VALUE))
-    y_pos = int(SCS_MINIMUM_POSITION_VALUE + y * (SCS_MAXIMUM_POSITION_VALUE - SCS_MINIMUM_POSITION_VALUE))
+    x_pos = int(SCS1_MINIMUM_POSITION_VALUE + x * (SCS1_MAXIMUM_POSITION_VALUE - SCS1_MINIMUM_POSITION_VALUE))
+    y_pos = int(SCS2_MINIMUM_POSITION_VALUE + y * (SCS2_MAXIMUM_POSITION_VALUE - SCS2_MINIMUM_POSITION_VALUE))
 
     # Clamp values to valid range
-    x_pos = max(SCS_MINIMUM_POSITION_VALUE, min(x_pos, SCS_MAXIMUM_POSITION_VALUE))
-    y_pos = max(SCS_MINIMUM_POSITION_VALUE, min(y_pos, SCS_MAXIMUM_POSITION_VALUE))
+    x_pos = max(SCS1_MINIMUM_POSITION_VALUE, min(x_pos, SCS1_MAXIMUM_POSITION_VALUE))
+    y_pos = max(SCS2_MINIMUM_POSITION_VALUE, min(y_pos, SCS2_MAXIMUM_POSITION_VALUE))
 
     # Clear previous parameters
     groupSyncWrite.clearParam()
@@ -150,15 +152,15 @@ if __name__ == "__main__":
         try:
             # Move to center position
             move_head(0.5, 0.5)
-            time.sleep(1)
+            time.sleep(2)
             
             # Move to top-right
             move_head(1.0, 1.0)
-            time.sleep(1)
+            time.sleep(5)
             
             # Move to bottom-left
             move_head(0.0, 0.0)
-            time.sleep(1)
+            time.sleep(7)
             
             # Move back to center
             move_head(0.5, 0.5)
