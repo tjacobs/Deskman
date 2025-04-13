@@ -64,9 +64,6 @@ class user_app_callback_class(app_callback_class):
         self.last_x = 0.5  # Last x position
         self.last_y = 0.5  # Last y position
 
-    def new_function(self):  # New function example
-        return "The meaning of life is: "
-
     def __del__(self):
         if self.servos_initialized:
             cleanup()
