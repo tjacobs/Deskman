@@ -2,6 +2,7 @@
 import os
 import time
 import sys, tty, termios
+from scservo_sdk import *
 
 fd = sys.stdin.fileno()
 old_settings = termios.tcgetattr(fd)
@@ -13,7 +14,6 @@ def getch():
         termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
     return ch
 
-from scservo_sdk import *
 
 # Control table address
 ADDR_SCS_TORQUE_ENABLE     = 40
