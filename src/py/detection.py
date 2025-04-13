@@ -92,8 +92,19 @@ class user_app_callback_class(app_callback_class):
 # User-defined callback function
 # ----------------------------------------------------------------------
 
+# Frame skipping parameters
+FRAME_SKIP = 10  # Process every Nth frame
+frame_counter = 0
+
 # This will be called when data is available from the pipeline
 def app_callback(pad, info, user_data):
+    global frame_counter
+    
+    # Skip frames
+    frame_counter += 1
+    if frame_counter % FRAME_SKIP != 0:
+        return Gst.PadProbeReturn.OK
+
     # Get the GstBuffer from the probe info
     buffer = info.get_buffer()
 
