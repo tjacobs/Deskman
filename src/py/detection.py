@@ -49,7 +49,7 @@ def download_face_model():
 class user_app_callback_class(app_callback_class):
     def __init__(self):
         super().__init__()
-        self.new_variable = 42  # New variable example
+        
         # Initialize servos
         if not setup_servos():
             print("Failed to initialize servos")
