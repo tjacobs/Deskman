@@ -36,7 +36,6 @@ SCS2_MAXIMUM_POSITION_VALUE  = 1900
 SCS_MOVING_STATUS_THRESHOLD = 20
 SCS_MOVING_SPEED            = 255
 SCS_MOVING_ACC              = 2
-protocol_end                = 0
 
 # Global variables for servo control
 portHandler = None
@@ -50,7 +49,7 @@ def setup_servos():
     portHandler = PortHandler(DEVICENAME)
 
     # Initialize PacketHandler instance
-    packetHandler = PacketHandler(protocol_end)
+    packetHandler = PacketHandler(0)
 
     # Initialize GroupSyncWrite instance
     groupSyncWrite = GroupSyncWrite(portHandler, packetHandler, ADDR_STS_GOAL_POSITION, 2)
