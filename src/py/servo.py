@@ -1,32 +1,19 @@
 #!/usr/bin/env python
-#
-# *********     Sync Write Example      *********
-#
-#
-# Available SCServo model on this example : All models using Protocol SCS
-# This example is tested with a SCServo(STS/SMS/SCS), and an URT
-# Be sure that SCServo(STS/SMS/SCS) properties are already set as %% ID : 1 / Baudnum : 6 (Baudrate : 1000000)
-#
-
 import os
+import time
+import sys, tty, termios
 
-if os.name == 'nt':
-    import msvcrt
-    def getch():
-        return msvcrt.getch().decode()
-else:
-    import sys, tty, termios
-    fd = sys.stdin.fileno()
-    old_settings = termios.tcgetattr(fd)
-    def getch():
-        try:
-            tty.setraw(sys.stdin.fileno())
-            ch = sys.stdin.read(1)
-        finally:
-            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
-        return ch
+fd = sys.stdin.fileno()
+old_settings = termios.tcgetattr(fd)
+def getch():
+    try:
+        tty.setraw(sys.stdin.fileno())
+        ch = sys.stdin.read(1)
+    finally:
+        termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+    return ch
 
-from scservo_sdk import *                    # Uses SCServo SDK library
+from scservo_sdk import *
 
 # Control table address
 ADDR_SCS_TORQUE_ENABLE     = 40
@@ -35,107 +22,145 @@ ADDR_STS_GOAL_POSITION     = 42
 ADDR_STS_GOAL_SPEED        = 46
 ADDR_STS_PRESENT_POSITION  = 56
 
-
-# Default setting
-SCS1_ID                     = 1                 # SCServo#1 ID : 1
-SCS2_ID                     = 2                 # SCServo#1 ID : 2
+# Settings
+SCS1_ID                     = 1
+SCS2_ID                     = 2
 BAUDRATE                    = 115200        
-DEVICENAME                  = '/dev/ttyAMA0'    # Check which port is being used on your controller
-                                                # ex) Windows: "COM1"   Linux: "/dev/ttyUSB0" Mac: "/dev/tty.usbserial-*"
+DEVICENAME                  = '/dev/ttyAMA0'
 
-SCS_MINIMUM_POSITION_VALUE  = 100               # SCServo will rotate between this value
-SCS_MAXIMUM_POSITION_VALUE  = 4000              # and this value (note that the SCServo would not move when the position value is out of movable range. Check e-manual about the range of the SCServo you use.)
-SCS_MOVING_STATUS_THRESHOLD = 20                # SCServo moving status threshold
-SCS_MOVING_SPEED            = 255                 # SCServo moving speed
-SCS_MOVING_ACC              = 255                 # SCServo moving acc
-protocol_end                = 0                 # SCServo bit end(STS/SMS=0, SCS=1)
+# Servo limits
+SCS_MINIMUM_POSITION_VALUE  = 100
+SCS_MAXIMUM_POSITION_VALUE  = 4000
+SCS_MOVING_STATUS_THRESHOLD = 20
+SCS_MOVING_SPEED            = 255
+SCS_MOVING_ACC              = 255
+protocol_end                = 0
 
-index = 0
-scs_goal_position = [SCS_MINIMUM_POSITION_VALUE, SCS_MAXIMUM_POSITION_VALUE]         # Goal position
+# Global variables for servo control
+portHandler = None
+packetHandler = None
+groupSyncWrite = None
 
+def setup_servos():
+    global portHandler, packetHandler, groupSyncWrite
+    
+    # Initialize PortHandler instance
+    portHandler = PortHandler(DEVICENAME)
 
-# Initialize PortHandler instance
-# Set the port path
-# Get methods and members of PortHandlerLinux or PortHandlerWindows
-portHandler = PortHandler(DEVICENAME)
+    # Initialize PacketHandler instance
+    packetHandler = PacketHandler(protocol_end)
 
-# Initialize PacketHandler instance
-# Get methods and members of Protocol
-packetHandler = PacketHandler(protocol_end)
+    # Initialize GroupSyncWrite instance
+    groupSyncWrite = GroupSyncWrite(portHandler, packetHandler, ADDR_STS_GOAL_POSITION, 2)
 
-# Initialize GroupSyncWrite instance
-groupSyncWrite = GroupSyncWrite(portHandler, packetHandler, ADDR_STS_GOAL_POSITION, 2)
+    # Open port
+    if not portHandler.openPort():
+        print("Failed to open the port")
+        return False
 
-# Open port
-if portHandler.openPort():
-    print("")
-else:
-    print("Failed to open the port")
-    print("Press any key to terminate...")
-    getch()
-    quit()
+    # Set port baudrate
+    if not portHandler.setBaudRate(BAUDRATE):
+        print("Failed to change the baudrate")
+        return False
 
+    # Configure servo 1
+    scs_comm_result, scs_error = packetHandler.write1ByteTxRx(portHandler, SCS1_ID, ADDR_STS_GOAL_ACC, SCS_MOVING_ACC)
+    if scs_comm_result != COMM_SUCCESS:
+        print("%s" % packetHandler.getTxRxResult(scs_comm_result))
+        return False
+    elif scs_error != 0:
+        print("%s" % packetHandler.getRxPacketError(scs_error))
+        return False
+    scs_comm_result, scs_error = packetHandler.write2ByteTxRx(portHandler, SCS1_ID, ADDR_STS_GOAL_SPEED, SCS_MOVING_SPEED)
+    if scs_comm_result != COMM_SUCCESS:
+        print("%s" % packetHandler.getTxRxResult(scs_comm_result))
+        return False
+    elif scs_error != 0:
+        print("%s" % packetHandler.getRxPacketError(scs_error))
+        return False
 
-# Set port baudrate
-if portHandler.setBaudRate(BAUDRATE):
-    print("")
-else:
-    print("Failed to change the baudrate")
-    print("Press any key to terminate...")
-    getch()
-    quit()
+    # Configure servo 2
+    scs_comm_result, scs_error = packetHandler.write1ByteTxRx(portHandler, SCS2_ID, ADDR_STS_GOAL_ACC, SCS_MOVING_ACC)
+    if scs_comm_result != COMM_SUCCESS:
+        print("%s" % packetHandler.getTxRxResult(scs_comm_result))
+        return False
+    elif scs_error != 0:
+        print("%s" % packetHandler.getRxPacketError(scs_error))
+        return False
+    scs_comm_result, scs_error = packetHandler.write2ByteTxRx(portHandler, SCS2_ID, ADDR_STS_GOAL_SPEED, SCS_MOVING_SPEED)
+    if scs_comm_result != COMM_SUCCESS:
+        print("%s" % packetHandler.getTxRxResult(scs_comm_result))
+        return False
+    elif scs_error != 0:
+        print("%s" % packetHandler.getRxPacketError(scs_error))
+        return False
 
-# SCServo#1 acc
-# for i in range(0, 256):
-#     scs_comm_result, scs_error = packetHandler.write1ByteTxRx(portHandler, i, ADDR_STS_GOAL_ACC, SCS_MOVING_ACC)
-#     # print(i)
+    return True
 
-#     if scs_comm_result == COMM_SUCCESS:
-#         print(i)
-#     #     # pass
-#     #     print("%s" % packetHandler.getTxRxResult(scs_comm_result))
-#     # elif scs_error != 0:
+def move_head(x, y):
+    """
+    Move the head to the specified x, y position.
+    x and y should be values between 0 and 1, where:
+    0 = minimum position
+    1 = maximum position
+    """
+    if portHandler is None or packetHandler is None or groupSyncWrite is None:
+        print("Servos not initialized. Call setup_servos() first.")
+        return False
 
-#     #     print("%s" % packetHandler.getRxPacketError(scs_error))
+    # Convert normalized coordinates to servo positions
+    x_pos = int(SCS_MINIMUM_POSITION_VALUE + x * (SCS_MAXIMUM_POSITION_VALUE - SCS_MINIMUM_POSITION_VALUE))
+    y_pos = int(SCS_MINIMUM_POSITION_VALUE + y * (SCS_MAXIMUM_POSITION_VALUE - SCS_MINIMUM_POSITION_VALUE))
 
-#     time.sleep(0.01)
+    # Clamp values to valid range
+    x_pos = max(SCS_MINIMUM_POSITION_VALUE, min(x_pos, SCS_MAXIMUM_POSITION_VALUE))
+    y_pos = max(SCS_MINIMUM_POSITION_VALUE, min(y_pos, SCS_MAXIMUM_POSITION_VALUE))
 
+    # Clear previous parameters
+    groupSyncWrite.clearParam()
 
-scs_comm_result, scs_error = packetHandler.write1ByteTxRx(portHandler, SCS1_ID, ADDR_STS_GOAL_ACC, SCS_MOVING_ACC)
-if scs_comm_result != COMM_SUCCESS:
-    print("%s" % packetHandler.getTxRxResult(scs_comm_result))
-elif scs_error != 0:
-    print("%s" % packetHandler.getRxPacketError(scs_error))
+    # Add servo 1 (x-axis) position
+    param_goal_position = [SCS_LOBYTE(x_pos), SCS_HIBYTE(x_pos)]
+    if not groupSyncWrite.addParam(SCS1_ID, param_goal_position):
+        print("[ID:%03d] groupSyncWrite addparam failed" % SCS1_ID)
+        return False
 
+    # Add servo 2 (y-axis) position
+    param_goal_position = [SCS_LOBYTE(y_pos), SCS_HIBYTE(y_pos)]
+    if not groupSyncWrite.addParam(SCS2_ID, param_goal_position):
+        print("[ID:%03d] groupSyncWrite addparam failed" % SCS2_ID)
+        return False
 
-# SCServo#1 speed
-scs_comm_result, scs_error = packetHandler.write2ByteTxRx(portHandler, SCS1_ID, ADDR_STS_GOAL_SPEED, SCS_MOVING_SPEED)
-if scs_comm_result != COMM_SUCCESS:
-    print("%s" % packetHandler.getTxRxResult(scs_comm_result))
-elif scs_error != 0:
-    print("%s" % packetHandler.getRxPacketError(scs_error))
+    # Syncwrite goal position
+    scs_comm_result = groupSyncWrite.txPacket()
+    if scs_comm_result != COMM_SUCCESS:
+        print("%s" % packetHandler.getTxRxResult(scs_comm_result))
+        return False
 
-# SCServo#1 torque
-scs_comm_result, scs_error = packetHandler.write1ByteTxRx(portHandler, SCS1_ID, ADDR_SCS_TORQUE_ENABLE, 0)
-if scs_comm_result != COMM_SUCCESS:
-    print("%s" % packetHandler.getTxRxResult(scs_comm_result))
-elif scs_error != 0:
-    print("%s" % packetHandler.getRxPacketError(scs_error))
+    return True
 
+def cleanup():
+    """Clean up resources"""
+    if portHandler:
+        portHandler.closePort()
 
-# Allocate goal position value into byte array
-param_goal_position = [SCS_LOBYTE(scs_goal_position[index]), SCS_HIBYTE(scs_goal_position[index])]
-
-# Add SCServo#1 goal position value to the Syncwrite parameter storage
-scs_addparam_result = groupSyncWrite.addParam(SCS1_ID, param_goal_position)
-if scs_addparam_result != True:
-    print("[ID:%03d] groupSyncWrite addparam failed" % SCS1_ID)
-    quit()
-
-# Syncwrite goal position
-scs_comm_result = groupSyncWrite.txPacket()
-if scs_comm_result != COMM_SUCCESS:
-    print("%s" % packetHandler.getTxRxResult(scs_comm_result))
-
-# Clear syncwrite parameter storage
-groupSyncWrite.clearParam()
+if __name__ == "__main__":
+    # Example usage
+    if setup_servos():
+        try:
+            # Move to center position
+            move_head(0.5, 0.5)
+            time.sleep(1)
+            
+            # Move to top-right
+            move_head(1.0, 1.0)
+            time.sleep(1)
+            
+            # Move to bottom-left
+            move_head(0.0, 0.0)
+            time.sleep(1)
+            
+            # Move back to center
+            move_head(0.5, 0.5)
+        finally:
+            cleanup()
