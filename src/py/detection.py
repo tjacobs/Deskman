@@ -5,6 +5,7 @@ import os
 import numpy as np
 import cv2
 import hailo
+from servo import setup_servos, move_head, cleanup
 
 from hailo_apps_infra.hailo_rpi_common import (
     get_caps_from_pad,
@@ -21,9 +22,19 @@ class user_app_callback_class(app_callback_class):
     def __init__(self):
         super().__init__()
         self.new_variable = 42  # New variable example
+        # Initialize servos
+        if not setup_servos():
+            print("Failed to initialize servos")
+            self.servos_initialized = False
+        else:
+            self.servos_initialized = True
 
     def new_function(self):  # New function example
         return "The meaning of life is: "
+
+    def __del__(self):
+        if self.servos_initialized:
+            cleanup()
 
 # -----------------------------------------------------------------------------------------------
 # User-defined callback function
@@ -72,6 +83,15 @@ def app_callback(pad, info, user_data):
             y_center = y + h/2
             x_move = 0.5 - x_center 
             y_move = 0.5 - y_center
+            
+            # Move the head based on the calculated values
+            if user_data.servos_initialized:
+                # Convert the move values to servo positions (0-1 range)
+                # x_move and y_move are in -0.5 to 0.5 range, so we add 0.5 to get 0-1 range
+                servo_x = 0.5 + x_move
+                servo_y = 0.5 + y_move
+                move_head(servo_x, servo_y)
+            
             if len(track) == 1:
                 track_id = track[0].get_id()
             string_to_print += (f"X: {x_move} Y: {y_move}\n")
