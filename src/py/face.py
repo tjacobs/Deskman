@@ -113,7 +113,7 @@ with mp_face_detection.FaceDetection(model_selection=0, min_detection_confidence
                     y_center = bbox.ymin + bbox.height/2
                     
                     # Apply damping and move head
-                    x_pos, y_pos = damp_movement(x_center, 1.0-y_center)
+                    x_pos, y_pos = damp_movement(x_center+0.1, 1.0-y_center)
                     move_head(x_pos, y_pos)
                     
                     # Draw detection
