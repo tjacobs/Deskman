@@ -119,8 +119,8 @@ with mp_face_detection.FaceDetection(model_selection=0, min_detection_confidence
                     y_center = bbox.ymin + bbox.height/2
                     
                     # Calculate movement (0.5 is center of frame)
-                    x_move = x_center - 0.5  # Inverted to move towards face
-                    y_move = y_center - 0.5  # Inverted to move towards face
+                    x_move = x_center - 0.5  # Move towards face horizontally
+                    y_move = 0.5 - y_center  # Inverted Y axis: move up when face is above center
                     
                     # Apply damping and move head
                     servo_x, servo_y = damp_movement(x_move, y_move)
