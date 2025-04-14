@@ -18,6 +18,8 @@ last_y = 0.5  # Last y position
 
 def damp_movement(x_move, y_move):
     """Apply damping to the movement values to reduce oscillation"""
+    global last_x, last_y
+    
     # Convert to absolute positions
     target_x = 0.5 + x_move
     target_y = 0.5 + y_move
@@ -41,7 +43,6 @@ def damp_movement(x_move, y_move):
     new_y = last_y + dy * smoothing_factor
     
     # Update last positions
-    global last_x, last_y
     last_x = new_x
     last_y = new_y
     
