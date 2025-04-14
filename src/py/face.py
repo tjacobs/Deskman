@@ -1,47 +1,45 @@
-import cv2
 import subprocess
-import numpy as np
 import mediapipe as mp
-import signal
-from servo import setup_servos, move_head, cleanup
+import servo
 
-# Setup MediaPipe
+# MediaPipe
 mp_face_detection = mp.solutions.face_detection
 mp_drawing = mp.solutions.drawing_utils
 
-# Damping parameters
-dead_zone = 0.01  # Ignore movements smaller than this
-smoothing_factor = 0.1  # How much to smooth the movement
-max_movement = 0.5  # Maximum movement per frame
-last_x = 0.5  # Last x position
-last_y = 0.5  # Last y position
+# Try to move face to these positions
+target_face_x = 0.55
+target_face_y = 0.40
+move_amount = 0.08
+move_max = 0.1
+last_x = 0.5
+last_y = 0.5
 
-def damp_movement(target_x, target_y):
-    """Apply damping to the movement values to reduce oscillation"""
+def update_movement(face_x, face_y):
     global last_x, last_y
-    
-    # Calculate distance
-    dx = target_x - last_x
-    dy = target_y - last_y
-    
-    # Apply dead zone
-    #if abs(dx) < dead_zone:
-    #    dx = 0
-    #if abs(dy) < dead_zone:
-    #    dy = 0
-        
+
+    # Calculate how much to move
+    dx = (face_x - target_face_x) * move_amount
+    dy = (face_y - target_face_y) * move_amount * 2
+
+    # Calculate new values
+    new_x = last_x + dx
+    new_y = last_y + dy
+    print(f"dx: {dx:.2f} new_x: {new_x:.2f}")
+    #print(f"dy: {dy:.2f} new_y: {new_y:.2f}")
+
     # Limit maximum movement
-    dx = max(min(dx, max_movement), -max_movement)
-    dy = max(min(dy, max_movement), -max_movement)
-    
-    # Apply smoothing
-    new_x = last_x + dx * smoothing_factor
-    new_y = last_y + dy * smoothing_factor
-    
+    dx = max(min(dx, move_max), -move_max)
+    dy = max(min(dy, move_max), -move_max)
+
     # Update last positions
     last_x = new_x
     last_y = new_y
-    
+    if last_x < 0: last_x = 0
+    if last_y < 0: last_y = 0
+    if last_x > 1: last_x = 1
+    if last_y > 1: last_y = 1
+   
+    # Return new
     return new_x, new_y
 
 # libcamera command
@@ -77,7 +75,7 @@ width, height = 640, 480
 frame_size = width * height * 3
 
 # Initialize servos
-if not setup_servos():
+if not servo.setup_servos():
     print("Failed to initialize servos")
     exit(1)
 
@@ -91,7 +89,7 @@ with mp_face_detection.FaceDetection(model_selection=0, min_detection_confidence
                 break
 
             # Make the frame writeable
-            frame = np.frombuffer(raw_frame, dtype=np.uint8).reshape((height, width, 3)).copy()
+            frame = numpy.frombuffer(raw_frame, dtype=numpy.uint8).reshape((height, width, 3)).copy()
 
             # Face detection
             rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -112,12 +110,12 @@ with mp_face_detection.FaceDetection(model_selection=0, min_detection_confidence
                 if l_face:
                     # Get face center
                     bbox = l_face.location_data.relative_bounding_box
-                    x_c = bbox.xmin + bbox.width/2
-                    y_c = bbox.ymin + bbox.height/2
+                    x_c = bbox.xmin + bbox.width / 2
+                    y_c = 1.0 - (bbox.ymin + bbox.height / 2)
                     
-                    # Apply damping and move head
-                    x_pos, y_pos = damp_movement(x_c+0.0, 1.0-y_c)
-                    move_head(x_pos, y_pos)
+                    # Apply movement and move head
+                    x_pos, y_pos = update_movement(x_c, y_c)
+                    servo.move_head(x_pos, y_pos)
                     
                     # Draw detection
                     mp_drawing.draw_detection(frame, l_face)
@@ -131,8 +129,7 @@ with mp_face_detection.FaceDetection(model_selection=0, min_detection_confidence
             # Check escape
             if cv2.waitKey(1) & 0xFF == 27: break
     finally:
-        print("Shutting down cleanly...")
-        cleanup()  # Cleanup servos
+        servo.cleanup()
         
         cv2.destroyAllWindows()
 
@@ -143,11 +140,8 @@ with mp_face_detection.FaceDetection(model_selection=0, min_detection_confidence
         except: pass
         ffmpeg_proc.terminate()
         try: ffmpeg_proc.wait(timeout=2)
-        except subprocess.TimeoutExpired:
-            ffmpeg_proc.kill()
-
+        except subprocess.TimeoutExpired: ffmpeg_proc.kill()
         libcamera_proc.terminate()
         try: libcamera_proc.wait(timeout=2)
-        except subprocess.TimeoutExpired:
-            libcamera_proc.kill()
+        except subprocess.TimeoutExpired: libcamera_proc.kill()
 
