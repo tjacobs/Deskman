@@ -25,10 +25,10 @@ def damp_movement(target_x, target_y):
     dy = target_y - last_y
     
     # Apply dead zone
-    if abs(dx) < dead_zone:
-        dx = 0
-    if abs(dy) < dead_zone:
-        dy = 0
+    #if abs(dx) < dead_zone:
+    #    dx = 0
+    #if abs(dy) < dead_zone:
+    #    dy = 0
         
     # Limit maximum movement
     dx = max(min(dx, max_movement), -max_movement)
@@ -70,7 +70,7 @@ ffmpeg_cmd = [
 # Launch libcamera and ffmpeg
 libcamera_proc = subprocess.Popen(libcamera_cmd, stdout=subprocess.PIPE)
 ffmpeg_proc = subprocess.Popen(ffmpeg_cmd, stdin=libcamera_proc.stdout, stdout=subprocess.PIPE)
-libcamera_proc.stdout.close()  # let ffmpeg own this pipe
+libcamera_proc.stdout.close()
 
 # Sizes
 width, height = 640, 480
@@ -85,6 +85,7 @@ if not setup_servos():
 with mp_face_detection.FaceDetection(model_selection=0, min_detection_confidence=0.5) as face_detection:
     try:
         while True:
+            # Read frame
             raw_frame = ffmpeg_proc.stdout.read(frame_size)
             if not raw_frame or len(raw_frame) != frame_size:
                 break
@@ -106,25 +107,29 @@ with mp_face_detection.FaceDetection(model_selection=0, min_detection_confidence
                     if area > l_area:
                         l_area = area
                         l_face = detection
+
+                # If found
                 if l_face:
                     # Get face center
                     bbox = l_face.location_data.relative_bounding_box
-                    x_center = bbox.xmin + bbox.width/2
-                    y_center = bbox.ymin + bbox.height/2
+                    x_c = bbox.xmin + bbox.width/2
+                    y_c = bbox.ymin + bbox.height/2
                     
                     # Apply damping and move head
-                    x_pos, y_pos = damp_movement(x_center+0.1, 1.0-y_center)
+                    x_pos, y_pos = damp_movement(x_c+0.0, 1.0-y_c)
                     move_head(x_pos, y_pos)
                     
                     # Draw detection
-                    #mp_drawing.draw_detection(frame, l_face)
+                    mp_drawing.draw_detection(frame, l_face)
                     
                     # Print values
-                    #print(f"X: {x_center:.2f} Y: {y_center:.2f}")
+                    print(f"X: {x_c:.2f} Y: {y_c:.2f}")
 
+            # Show
             cv2.imshow("Face Detection", frame)
-            if cv2.waitKey(1) & 0xFF == 27:
-                break
+
+            # Check escape
+            if cv2.waitKey(1) & 0xFF == 27: break
     finally:
         print("Shutting down cleanly...")
         cleanup()  # Cleanup servos
