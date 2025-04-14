@@ -1,3 +1,5 @@
+import cv2
+import numpy
 import subprocess
 import mediapipe as mp
 import servo
@@ -10,7 +12,7 @@ mp_drawing = mp.solutions.drawing_utils
 target_face_x = 0.55
 target_face_y = 0.40
 move_amount = 0.08
-move_max = 0.1
+move_max = 0.001
 last_x = 0.5
 last_y = 0.5
 
@@ -24,12 +26,14 @@ def update_movement(face_x, face_y):
     # Calculate new values
     new_x = last_x + dx
     new_y = last_y + dy
-    print(f"dx: {dx:.2f} new_x: {new_x:.2f}")
-    #print(f"dy: {dy:.2f} new_y: {new_y:.2f}")
 
     # Limit maximum movement
     dx = max(min(dx, move_max), -move_max)
     dy = max(min(dy, move_max), -move_max)
+
+    print(f"dx: {dx:.4f} new_x: {new_x:.4f}")
+    #print(f"dy: {dy:.4f} new_y: {new_y:.4f}")
+
 
     # Update last positions
     last_x = new_x
