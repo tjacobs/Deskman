@@ -4,23 +4,13 @@ import time
 import sys, tty, termios
 from scservo_sdk import *
 
-fd = sys.stdin.fileno()
-old_settings = termios.tcgetattr(fd)
-def getch():
-    try:
-        tty.setraw(sys.stdin.fileno())
-        ch = sys.stdin.read(1)
-    finally:
-        termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
-    return ch
-
-
-# Control table address
-ADDR_SCS_TORQUE_ENABLE     = 40
-ADDR_STS_GOAL_ACC          = 41
-ADDR_STS_GOAL_POSITION     = 42
-ADDR_STS_GOAL_SPEED        = 46
-ADDR_STS_PRESENT_POSITION  = 56
+# Servo limits
+SCS1_MINIMUM_POSITION_VALUE = 0
+SCS1_MAXIMUM_POSITION_VALUE = 2000
+SCS2_MINIMUM_POSITION_VALUE = 1400
+SCS2_MAXIMUM_POSITION_VALUE = 1900
+SCS_MOVING_SPEED            = 400
+SCS_MOVING_ACC              = 100
 
 # Settings
 SCS1_ID                     = 1
@@ -28,15 +18,14 @@ SCS2_ID                     = 2
 BAUDRATE                    = 115200        
 DEVICENAME                  = '/dev/ttyAMA0'
 
-# Servo limits
-SCS1_MINIMUM_POSITION_VALUE  = 0
-SCS1_MAXIMUM_POSITION_VALUE  = 2000
-SCS2_MINIMUM_POSITION_VALUE  = 1400
-SCS2_MAXIMUM_POSITION_VALUE  = 1900
-SCS_MOVING_SPEED            = 500
-SCS_MOVING_ACC              = 200
+# Control table address
+ADDR_SCS_TORQUE_ENABLE      = 40
+ADDR_STS_GOAL_ACC           = 41
+ADDR_STS_GOAL_POSITION      = 42
+ADDR_STS_GOAL_SPEED         = 46
+ADDR_STS_PRESENT_POSITION   = 56
 
-# Global variables for servo control
+# Servo control
 portHandler = None
 packetHandler = None
 groupSyncWrite = None
@@ -148,19 +137,23 @@ if __name__ == "__main__":
     # Example usage
     if setup_servos():
         try:
-            # Move to center position
-            move_head(0.5, 0.5)
+            # Move to center up position
+            move_head(0.5, 0.6)
             time.sleep(2)
             
             # Move to top-right
             move_head(1.0, 1.0)
-            time.sleep(5)
+            time.sleep(8)
+
+            # Move to top-left
+            move_head(0.0, 1.0)
+            time.sleep(8)
             
             # Move to bottom-left
             move_head(0.0, 0.0)
-            time.sleep(7)
-            
-            # Move back to center
+            time.sleep(8)
+	    
+	    # Move back to center
             move_head(0.5, 0.5)
         finally:
             cleanup()
