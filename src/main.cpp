@@ -245,7 +245,7 @@ int main(int argc, char **argv) {
         if (textSurface != NULL) {
             SDL_Texture* textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
             SDL_Rect textRect = {10, 10, textSurface->w, textSurface->h};
-            SDL_RenderCopy(renderer, textTexture, NULL, &textRect);
+            //SDL_RenderCopy(renderer, textTexture, NULL, &textRect);
             SDL_FreeSurface(textSurface);
             SDL_DestroyTexture(textTexture);
         }
