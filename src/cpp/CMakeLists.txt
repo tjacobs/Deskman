@@ -15,8 +15,10 @@ pkg_check_modules(LIBCAMERA libcamera REQUIRED)
 # Include directories
 include_directories(
     ${MEDIAPIPE_INCLUDE_DIR}
-    ${MEDIAPIPE_DIR}/third_party
+    ${MEDIAPIPE_DIR}/mediapipe
     ${MEDIAPIPE_DIR}/bazel-bin
+    ${MEDIAPIPE_DIR}/bazel-mediapipe
+    ${MEDIAPIPE_DIR}/third_party
     ${LIBCAMERA_INCLUDE_DIRS}
 )
 
