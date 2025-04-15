@@ -1,11 +1,5 @@
 #include "face_tracker.hpp"
 #include <iostream>
-#include <mediapipe/framework/calculator_graph.h>
-#include <mediapipe/framework/formats/image_frame.h>
-#include <mediapipe/framework/formats/landmark.pb.h>
-#include <mediapipe/framework/port/opencv_core_inc.h>
-#include <mediapipe/framework/port/opencv_imgproc_inc.h>
-#include <mediapipe/framework/port/status.h>
 
 FaceTracker::FaceTracker() {
     // Load the pre-trained face detection classifier
