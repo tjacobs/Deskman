@@ -11,6 +11,7 @@ set(MEDIAPIPE_INCLUDE_DIR ${MEDIAPIPE_DIR})
 find_package(OpenCV REQUIRED)
 find_package(PkgConfig REQUIRED)
 find_package(Protobuf REQUIRED)
+find_package(Threads REQUIRED)
 pkg_check_modules(LIBCAMERA libcamera REQUIRED)
 
 # Include directories
@@ -38,6 +39,7 @@ target_link_libraries(face_tracker PRIVATE
     ${OpenCV_LIBS}
     ${LIBCAMERA_LIBRARIES}
     ${Protobuf_LIBRARIES}
+    ${CMAKE_THREAD_LIBS_INIT}
     ${MEDIAPIPE_DIR}/bazel-bin/mediapipe/framework/libcalculator_graph.a
     ${MEDIAPIPE_DIR}/bazel-bin/mediapipe/framework/port/libstatus.a
     ${MEDIAPIPE_DIR}/bazel-bin/mediapipe/modules/face_detection/libface_detection_short_range_cpu.a
