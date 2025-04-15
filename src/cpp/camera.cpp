@@ -2,94 +2,66 @@
 #include <iostream>
 
 Camera::Camera(int width, int height)
-    : width_(width), height_(height), camera_(NULL), allocator_(NULL), current_request_(NULL) {}
+    : width_(width), height_(height) {}
 
 Camera::~Camera() {
     cleanup();
 }
 
 void Camera::cleanup() {
-    if (current_request_) {
-        delete current_request_;
-        current_request_ = NULL;
-    }
     if (camera_) {
         camera_->stop();
         camera_->release();
-        delete camera_;
-        camera_ = NULL;
     }
-    if (allocator_) {
-        delete allocator_;
-        allocator_ = NULL;
-    }
+    camera_.reset();
+    manager_.reset();
 }
 
 bool Camera::setupStream() {
     try {
         // Initialize libcamera
-        libcamera::CameraManager* manager = new libcamera::CameraManager();
-        if (manager->start()) {
+        manager_ = std::make_shared<libcamera::CameraManager>();
+        if (manager_->start()) {
             std::cerr << "Failed to start camera manager" << std::endl;
-            delete manager;
             return false;
         }
 
         // Get the first available camera
-        auto cameras = manager->cameras();
+        auto cameras = manager_->cameras();
         if (cameras.empty()) {
             std::cerr << "No cameras available" << std::endl;
-            delete manager;
             return false;
         }
 
-        camera_ = new libcamera::Camera(cameras[0]);
+        camera_ = cameras[0];
         if (camera_->acquire()) {
             std::cerr << "Failed to acquire camera" << std::endl;
-            delete camera_;
-            camera_ = NULL;
-            delete manager;
             return false;
         }
 
         // Configure camera
-        auto config = camera_->generateConfiguration({libcamera::StreamRole::Viewfinder});
-        if (!config) {
+        config_ = camera_->generateConfiguration({libcamera::StreamRole::Viewfinder});
+        if (!config_) {
             std::cerr << "Failed to generate camera configuration" << std::endl;
-            delete camera_;
-            camera_ = NULL;
-            delete manager;
             return false;
         }
 
-        auto& streamConfig = config->at(0);
+        auto& streamConfig = config_->at(0);
         streamConfig.size.width = width_;
         streamConfig.size.height = height_;
         streamConfig.pixelFormat = libcamera::formats::RGB888;
 
-        if (camera_->configure(config.get())) {
+        if (camera_->configure(config_.get())) {
             std::cerr << "Failed to configure camera" << std::endl;
-            delete camera_;
-            camera_ = NULL;
-            delete manager;
             return false;
         }
 
-        // Allocate buffers
-        allocator_ = new libcamera::FrameBufferAllocator(camera_);
-        for (auto& stream : config->streams()) {
-            if (allocator_->allocate(stream.get())) {
-                std::cerr << "Failed to allocate buffers" << std::endl;
-                delete allocator_;
-                allocator_ = NULL;
-                delete camera_;
-                camera_ = NULL;
-                delete manager;
-                return false;
-            }
+        // Start camera
+        if (camera_->start()) {
+            std::cerr << "Failed to start camera" << std::endl;
+            return false;
         }
 
-        delete manager;
         return true;
     } catch (const std::exception& e) {
         std::cerr << "Camera setup error: " << e.what() << std::endl;
@@ -101,77 +73,50 @@ bool Camera::initialize() {
     return setupStream();
 }
 
-bool Camera::startStream() {
-    if (!camera_) {
-        std::cerr << "Camera not initialized" << std::endl;
-        return false;
-    }
-
-    if (camera_->start()) {
-        std::cerr << "Failed to start camera" << std::endl;
-        return false;
-    }
-
-    // Create initial request
+bool Camera::captureFrame(cv::Mat& frame) {
+    // Create request
     current_request_ = camera_->createRequest();
     if (!current_request_) {
         std::cerr << "Failed to create request" << std::endl;
         return false;
     }
 
-    if (camera_->queueRequest(current_request_)) {
+    // Queue request
+    if (camera_->queueRequest(current_request_.get())) {
         std::cerr << "Failed to queue request" << std::endl;
         return false;
     }
 
-    return true;
-}
+    // Wait for completion
+    libcamera::Request* completed = nullptr;
+    camera_->requestCompleted.connect([&](libcamera::Request* request) {
+        completed = request;
+    });
 
-bool Camera::getNextFrame(uint8_t*& data, size_t& size) {
-    if (!current_request_) {
-        std::cerr << "No active request" << std::endl;
-        return false;
+    while (!completed) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 
-    // Wait for current request to complete
-    auto completed = current_request_->wait();
-    if (completed->status() != libcamera::Request::Status::Completed) {
+    if (completed->status() != libcamera::Request::Status::Complete) {
         std::cerr << "Request failed" << std::endl;
         return false;
     }
 
     // Get frame data
-    auto buffer = completed->buffers().begin()->second;
+    const auto& buffers = completed->buffers();
+    if (buffers.empty()) {
+        std::cerr << "No buffers in completed request" << std::endl;
+        return false;
+    }
+
+    auto buffer = buffers.begin()->second;
     const auto& planes = buffer->planes();
+    if (planes.empty()) {
+        std::cerr << "No planes in buffer" << std::endl;
+        return false;
+    }
+
     const auto& plane = planes[0];
-
-    data = plane->data();
-    size = plane->size();
-
-    // Create new request for next frame
-    current_request_ = camera_->createRequest();
-    if (!current_request_) {
-        std::cerr << "Failed to create new request" << std::endl;
-        return false;
-    }
-
-    if (camera_->queueRequest(current_request_)) {
-        std::cerr << "Failed to queue new request" << std::endl;
-        return false;
-    }
-
-    return true;
-}
-
-bool Camera::captureFrame(cv::Mat& frame) {
-    uint8_t* data;
-    size_t size;
-    
-    if (!getNextFrame(data, size)) {
-        return false;
-    }
-
-    // Create OpenCV Mat from frame data
-    frame = cv::Mat(height_, width_, CV_8UC3, data);
+    frame = cv::Mat(height_, width_, CV_8UC3, const_cast<uint8_t*>(plane.data().data()));
     return true;
 } 
