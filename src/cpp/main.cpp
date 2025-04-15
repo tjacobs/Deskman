@@ -5,15 +5,22 @@
 
 int main() {
     try {
+        std::cout << "Starting face tracker..." << std::endl;
+        
         Camera camera;
+        std::cout << "Camera object created" << std::endl;
+        
         FaceTracker tracker;
+        std::cout << "FaceTracker object created" << std::endl;
         
         if (!camera.initialize()) {
             std::cerr << "Failed to initialize camera" << std::endl;
             return 1;
         }
+        std::cout << "Camera initialized successfully" << std::endl;
         
         cv::namedWindow("Face Detection", cv::WINDOW_AUTOSIZE);
+        std::cout << "Window created" << std::endl;
         
         while (true) {
             cv::Mat frame;
@@ -24,6 +31,7 @@ int main() {
             
             // Detect faces
             auto faces = tracker.detectFaces(frame);
+            std::cout << "Detected " << faces.size() << " faces" << std::endl;
             
             // Draw rectangles around detected faces
             for (const auto& face : faces) {
