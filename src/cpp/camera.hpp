@@ -15,9 +15,19 @@ public:
     bool initialize();
     bool captureFrame(cv::Mat& frame);
     
+    // New methods for direct buffer access
+    bool startStream();
+    bool getNextFrame(uint8_t*& data, size_t& size);
+    int getWidth() const { return width_; }
+    int getHeight() const { return height_; }
+    
 private:
     int width_;
     int height_;
     libcamera::Camera* camera_;
     libcamera::FrameBufferAllocator* allocator_;
+    libcamera::Request* current_request_;
+    
+    bool setupStream();
+    void cleanup();
 }; 
