@@ -9,6 +9,7 @@ find_package(PkgConfig REQUIRED)
 find_package(Protobuf REQUIRED)
 find_package(Threads REQUIRED)
 find_package(glog REQUIRED)
+find_package(absl REQUIRED)
 pkg_check_modules(LIBCAMERA libcamera REQUIRED)
 
 # MediaPipe paths
@@ -23,6 +24,7 @@ include_directories(
     ${LIBCAMERA_INCLUDE_DIRS}
     ${Protobuf_INCLUDE_DIRS}
     ${GLOG_INCLUDE_DIRS}
+    ${absl_INCLUDE_DIRS}
 )
 
 # Add executable
@@ -39,5 +41,7 @@ target_link_libraries(face_tracker PRIVATE
     ${Protobuf_LIBRARIES}
     ${CMAKE_THREAD_LIBS_INIT}
     glog::glog
+    absl::base
+    absl::strings
 )
 
