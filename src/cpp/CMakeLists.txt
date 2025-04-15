@@ -18,6 +18,7 @@ include_directories(
     ${MEDIAPIPE_DIR}/mediapipe
     ${MEDIAPIPE_DIR}/bazel-bin
     ${MEDIAPIPE_DIR}/bazel-mediapipe
+    ${MEDIAPIPE_DIR}/bazel-mediapipe/external/com_google_absl
     ${MEDIAPIPE_DIR}/third_party
     ${LIBCAMERA_INCLUDE_DIRS}
 )
@@ -36,5 +37,7 @@ target_link_libraries(face_tracker PRIVATE
     ${MEDIAPIPE_DIR}/bazel-bin/mediapipe/framework/libcalculator_graph.a
     ${MEDIAPIPE_DIR}/bazel-bin/mediapipe/framework/port/libstatus.a
     ${MEDIAPIPE_DIR}/bazel-bin/mediapipe/modules/face_detection/libface_detection_short_range_cpu.a
+    ${MEDIAPIPE_DIR}/bazel-bin/external/com_google_absl/absl/base/libbase.a
+    ${MEDIAPIPE_DIR}/bazel-bin/external/com_google_absl/absl/strings/libstrings.a
 )
 
