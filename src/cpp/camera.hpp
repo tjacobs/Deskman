@@ -5,7 +5,7 @@
 #include <libcamera/camera_manager.h>
 #include <libcamera/stream.h>
 #include <libcamera/framebuffer.h>
-
+#include <memory>
 
 class Camera {
 public:
@@ -24,9 +24,10 @@ public:
 private:
     int width_;
     int height_;
-    libcamera::Camera* camera_;
-    libcamera::FrameBufferAllocator* allocator_;
-    libcamera::Request* current_request_;
+    std::shared_ptr<libcamera::CameraManager> manager_;
+    std::shared_ptr<libcamera::Camera> camera_;
+    std::unique_ptr<libcamera::CameraConfiguration> config_;
+    std::unique_ptr<libcamera::Request> current_request_;
     
     bool setupStream();
     void cleanup();
