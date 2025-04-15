@@ -1,7 +1,4 @@
-#pragma once
-
-#include <opencv2/opencv.hpp>
-#include "camera.hpp"
+//#include "mediapipe/framework/calculator_graph.h"
 
 class FaceTracker {
 public:
@@ -13,8 +10,8 @@ public:
     
 private:
     Camera* camera_;
-    mediapipe::FaceDetection* face_detector_;
-    
+ //   mediapipe::CalculatorGraph graph_;  // <- This runs your face detection graph
+
     // Dampener parameters
     float dead_zone_;
     float smoothing_factor_;
@@ -23,4 +20,5 @@ private:
     float last_y_;
     
     void dampenMovement(float target_x, float target_y, float& out_x, float& out_y);
-}; 
+};
+

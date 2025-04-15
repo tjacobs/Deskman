@@ -1,7 +1,11 @@
 #pragma once
 
 #include <opencv2/opencv.hpp>
-#include <libcamera/libcamera.hpp>
+#include <libcamera/camera.h>
+#include <libcamera/camera_manager.h>
+#include <libcamera/stream.h>
+#include <libcamera/framebuffer.h>
+
 
 class Camera {
 public:

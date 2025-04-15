@@ -25,7 +25,7 @@ int main() {
             float face_x, face_y;
             if (tracker->processFrame(face_x, face_y)) {
                 // Move servos using your existing functions
-                move_servos(face_x, face_y);
+                //move_servos(face_x, face_y);
             }
             
             // Check for exit condition

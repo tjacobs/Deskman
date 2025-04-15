@@ -1,27 +1,23 @@
 cmake_minimum_required(VERSION 3.10)
 project(face_tracker)
-
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Find required packages
+# Manually set MediaPipe paths
+set(MEDIAPIPE_DIR ../mediapipe)
+set(MEDIAPIPE_INCLUDE_DIR ${MEDIAPIPE_DIR})
+
+include_directories(
+    ${MEDIAPIPE_INCLUDE_DIR}
+    ${MEDIAPIPE_DIR}/third_party
+    ${MEDIAPIPE_DIR}/bazel-bin
+)
+
+# Add OpenCV + libcamera
 find_package(OpenCV REQUIRED)
 find_package(PkgConfig REQUIRED)
-
-# Try to find libcamera
-pkg_check_modules(LIBCAMERA libcamera)
-if(NOT LIBCAMERA_FOUND)
-    message(FATAL_ERROR "libcamera not found. Please install libcamera development package.")
-endif()
-
-# Try to find MediaPipe
-find_path(MEDIAPIPE_INCLUDE_DIR mediapipe/framework/calculator_graph.h
-    PATHS /usr/include /usr/local/include
-    PATH_SUFFIXES mediapipe
-)
-if(NOT MEDIAPIPE_INCLUDE_DIR)
-    message(FATAL_ERROR "MediaPipe not found. Please install MediaPipe development package.")
-endif()
+pkg_check_modules(LIBCAMERA libcamera REQUIRED)
+include_directories(${LIBCAMERA_INCLUDE_DIRS})
 
 # Add executable
 add_executable(face_tracker
@@ -41,5 +37,9 @@ target_include_directories(face_tracker PRIVATE
 target_link_libraries(face_tracker PRIVATE
     ${OpenCV_LIBS}
     ${LIBCAMERA_LIBRARIES}
-    mediapipe
-) 
+    # These are example static libs from MediaPipe; adjust as needed:
+    ${CMAKE_SOURCE_DIR}/../mediapipe/bazel-bin/mediapipe/framework/libcalculator_graph.a
+    ${CMAKE_SOURCE_DIR}/../mediapipe/bazel-bin/mediapipe/framework/port/libstatus.a
+    # You may need more depending on what you use
+)
+
