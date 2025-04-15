@@ -4,7 +4,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # MediaPipe paths
-set(MEDIAPIPE_DIR ../mediapipe)
+set(MEDIAPIPE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/mediapipe)
 set(MEDIAPIPE_INCLUDE_DIR ${MEDIAPIPE_DIR})
 
 # Find required packages
