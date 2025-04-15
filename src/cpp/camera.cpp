@@ -1,5 +1,8 @@
 #include "camera.hpp"
 #include <iostream>
+#include <thread>
+#include <chrono>
+#include <libcamera/formats.h>
 
 Camera::Camera(int width, int height)
     : width_(width), height_(height) {}
@@ -49,7 +52,7 @@ bool Camera::setupStream() {
         auto& streamConfig = config_->at(0);
         streamConfig.size.width = width_;
         streamConfig.size.height = height_;
-        streamConfig.pixelFormat = libcamera::formats::RGB888;
+        streamConfig.pixelFormat = libcamera::formats::BGR888;
 
         if (camera_->configure(config_.get())) {
             std::cerr << "Failed to configure camera" << std::endl;
@@ -89,15 +92,17 @@ bool Camera::captureFrame(cv::Mat& frame) {
 
     // Wait for completion
     libcamera::Request* completed = nullptr;
-    camera_->requestCompleted.connect([&](libcamera::Request* request) {
-        completed = request;
-    });
+    auto slot = std::make_shared<std::function<void(libcamera::Request*)>>(
+        [&completed](libcamera::Request* request) {
+            completed = request;
+        });
+    camera_->requestCompleted.connect(slot.get());
 
     while (!completed) {
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 
-    if (completed->status() != libcamera::Request::Status::Complete) {
+    if (completed->status() != libcamera::Request::RequestComplete) {
         std::cerr << "Request failed" << std::endl;
         return false;
     }
@@ -117,6 +122,6 @@ bool Camera::captureFrame(cv::Mat& frame) {
     }
 
     const auto& plane = planes[0];
-    frame = cv::Mat(height_, width_, CV_8UC3, const_cast<uint8_t*>(plane.data().data()));
+    frame = cv::Mat(height_, width_, CV_8UC3, const_cast<uint8_t*>(static_cast<const uint8_t*>(plane.data())));
     return true;
 } 
