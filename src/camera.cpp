@@ -6,15 +6,13 @@
 #include <chrono>
 
 Camera::Camera() : use_libcamera(false), libcamera_handle(nullptr) {
-    // Check if we're on a Raspberry Pi by looking for Pi-specific files
-    if (std::__fs::filesystem::exists("/proc/device-tree/model")) {
+    // Check if we're running on a Raspberry Pi
+    isRaspberryPi = false;
+    if (std::filesystem::exists("/proc/device-tree/model")) {
         std::ifstream model("/proc/device-tree/model");
         std::string model_str;
         std::getline(model, model_str);
-        if (model_str.find("Raspberry Pi") != std::string::npos) {
-            use_libcamera = true;
-            std::cout << "Detected Raspberry Pi: " << model_str << std::endl;
-        }
+        isRaspberryPi = model_str.find("Raspberry Pi") != std::string::npos;
     }
 }
 
@@ -25,43 +23,43 @@ Camera::~Camera() {
 }
 
 bool Camera::initialize() {
-    if (use_libcamera) {
-        return initializeLibCamera();
-    }
+    // Try to open the camera
+    std::cout << "Trying to open camera " << cameraIndex << std::endl;
     
-    // Try different camera indices
-    for (int i = 0; i < 10; i++) {
-        std::cout << "Trying to open camera " << i << std::endl;
-        cap.open(i);
-        
-        if (cap.isOpened()) {
-            std::cout << "Successfully opened camera " << i << std::endl;
-            
-            // Set camera properties
-            cap.set(cv::CAP_PROP_FRAME_WIDTH, 320);
-            cap.set(cv::CAP_PROP_FRAME_HEIGHT, 240);
-            
-            // Test if we can actually read a frame
-            cv::Mat test_frame;
-            if (cap.read(test_frame)) {
-                std::cout << "Successfully captured test frame from camera " << i << std::endl;
-                return true;
-            } else {
-                std::cerr << "Could not read frame from camera " << i << std::endl;
-                cap.release();
-            }
-        }
+    if (isRaspberryPi) {
+        // Use GStreamer pipeline on Raspberry Pi
+        std::string pipeline = "libcamerasrc ! video/x-raw,width=640,height=480,framerate=30/1 ! videoconvert ! appsink";
+        cap.open(pipeline, cv::CAP_GSTREAMER);
+    } else {
+        // Use default camera on other platforms
+        cap.open(cameraIndex);
     }
-    
-    std::cerr << "Error: Could not open any camera" << std::endl;
-    return false;
+
+    if (!cap.isOpened()) {
+        std::cerr << "Error: Could not open camera " << cameraIndex << std::endl;
+        return false;
+    }
+
+    // Set camera properties
+    if (!isRaspberryPi) {
+        cap.set(cv::CAP_PROP_FRAME_WIDTH, 640);
+        cap.set(cv::CAP_PROP_FRAME_HEIGHT, 480);
+        cap.set(cv::CAP_PROP_FPS, 30);
+    }
+
+    // Try to capture a test frame
+    cv::Mat testFrame;
+    if (!cap.read(testFrame)) {
+        std::cerr << "Error: Could not read frame from camera " << cameraIndex << std::endl;
+        return false;
+    }
+
+    std::cout << "Successfully opened camera " << cameraIndex << std::endl;
+    std::cout << "Successfully captured test frame from camera " << cameraIndex << std::endl;
+    return true;
 }
 
 bool Camera::captureFrame(cv::Mat& frame) {
-    if (!cap.isOpened()) {
-        return false;
-    }
-    
     return cap.read(frame);
 }
 
