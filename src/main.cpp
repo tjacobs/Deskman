@@ -115,8 +115,8 @@ int main(int argc, char **argv) {
             targetX = faceX;
             targetY = faceY;
             
-            // Move head to follow face
-            move_head(targetX * HEAD_SCALE, targetY * HEAD_SCALE);
+            // Move head to follow face (temporarily disabled)
+            // move_head(targetX * HEAD_SCALE, targetY * HEAD_SCALE);
             currentHeadX = targetX;
             currentHeadY = targetY;
         }
