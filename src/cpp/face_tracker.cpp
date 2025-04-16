@@ -41,11 +41,11 @@ std::vector<cv::Rect> FaceTracker::detectFaces(const cv::Mat& frame) {
     // Equalize histogram to improve detection
     cv::equalizeHist(frame_gray, frame_gray);
     
-    // Detect faces with balanced parameters
-    // scaleFactor: 1.1 (less sensitive than 1.05)
-    // minNeighbors: 4 (requires more evidence than 2)
-    // minSize: 40x40 (focus on actual faces)
-    face_cascade.detectMultiScale(frame_gray, faces, 1.1, 4, 0, cv::Size(40, 40));
+    // Detect faces with conservative parameters to reduce false positives
+    // scaleFactor: 1.2 (less sensitive than 1.1)
+    // minNeighbors: 6 (requires more evidence than 4)
+    // minSize: 50x50 (focus on larger faces)
+    face_cascade.detectMultiScale(frame_gray, faces, 1.2, 6, 0, cv::Size(50, 50));
     
     return faces;
 } 
