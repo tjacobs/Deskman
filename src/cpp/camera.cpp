@@ -38,8 +38,8 @@ bool Camera::initialize() {
             std::cout << "Successfully opened camera " << i << std::endl;
             
             // Set camera properties
-            cap.set(cv::CAP_PROP_FRAME_WIDTH, 640);
-            cap.set(cv::CAP_PROP_FRAME_HEIGHT, 480);
+            cap.set(cv::CAP_PROP_FRAME_WIDTH, 320);
+            cap.set(cv::CAP_PROP_FRAME_HEIGHT, 240);
             
             // Test if we can actually read a frame
             cv::Mat test_frame;
@@ -67,7 +67,7 @@ bool Camera::captureFrame(cv::Mat& frame) {
 
 bool Camera::initializeLibCamera() {
     // Use GStreamer pipeline for libcamera
-    std::string pipeline = "libcamerasrc ! video/x-raw,format=BGR ! appsink";
+    std::string pipeline = "libcamerasrc ! video/x-raw,width=320,height=240,format=BGR ! appsink";
     std::cout << "Opening camera with pipeline: " << pipeline << std::endl;
     
     cap.open(pipeline, cv::CAP_GSTREAMER);
