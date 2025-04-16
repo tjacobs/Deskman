@@ -66,8 +66,8 @@ bool Camera::captureFrame(cv::Mat& frame) {
 }
 
 bool Camera::initializeLibCamera() {
-    // Use GStreamer pipeline for libcamera
-    std::string pipeline = "libcamerasrc ! video/x-raw,width=320,height=240,format=BGR ! appsink";
+    // Use GStreamer pipeline for libcamera with lower framerate
+    std::string pipeline = "libcamerasrc ! video/x-raw,width=320,height=240,framerate=10/1,format=BGR ! appsink";
     std::cout << "Opening camera with pipeline: " << pipeline << std::endl;
     
     cap.open(pipeline, cv::CAP_GSTREAMER);
