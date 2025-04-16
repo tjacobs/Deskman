@@ -5,6 +5,8 @@
 #include <thread>
 #include <chrono>
 
+using namespace std;
+
 Camera::Camera() {
     // Check if we're running on a Raspberry Pi
     isRaspberryPi = false;
@@ -21,65 +23,67 @@ Camera::Camera() {
 
 bool Camera::initialize() {
     if (isRaspberryPi) {
-        // Use GStreamer pipeline on Raspberry Pi with lower resolution and framerate
-        std::string pipeline = "libcamerasrc ! video/x-raw,width=320,height=240,framerate=10/1,format=BGR ! appsink";
-        std::cout << "Initializing Raspberry Pi camera with pipeline: " << pipeline << std::endl;
+        // Use GStreamer pipeline on Raspberry Pi with resolution and framerate from class
+        string pipeline = "libcamerasrc ! video/x-raw,width=" + to_string(width) + 
+                              ",height=" + to_string(height) + 
+                              ",framerate=" + to_string(framerate) + "/1,format=BGR ! appsink";
+        cout << "Initializing Raspberry Pi camera with pipeline: " << pipeline << endl;
         
         cap.open(pipeline, cv::CAP_GSTREAMER);
         if (!cap.isOpened()) {
-            std::cerr << "Failed to open camera with GStreamer pipeline" << std::endl;
+            cerr << "Failed to open camera with GStreamer pipeline" << endl;
             return false;
         }
 
         // Test if we can read a frame with multiple retries
         cv::Mat testFrame;
         for (int i = 0; i < 5; i++) {
-            std::cout << "Attempt " << i + 1 << " to read test frame..." << std::endl;
+            cout << "Attempt " << i + 1 << " to read test frame..." << endl;
             if (cap.read(testFrame)) {
-                std::cout << "Successfully captured test frame: " << testFrame.cols << "x" << testFrame.rows << std::endl;
+                cout << "Successfully captured test frame: " << testFrame.cols << "x" << testFrame.rows << endl;
                 return true;
             } else {
-                std::cout << "Failed to capture test frame, retrying..." << std::endl;
-                std::this_thread::sleep_for(std::chrono::seconds(1));
+                cout << "Failed to capture test frame, retrying..." << endl;
+                this_thread::sleep_for(chrono::seconds(1));
             }
         }
         
-        std::cerr << "Error: Could not read frames from camera" << std::endl;
+        cerr << "Error: Could not read frames from camera" << endl;
         return false;
     } else {
         // Use default camera on other platforms
-        std::cout << "Initializing default camera" << std::endl;
+        cout << "Initializing default camera" << endl;
         if (!cap.open(cameraIndex)) {
-            std::cerr << "Failed to open camera " << cameraIndex << std::endl;
+            cerr << "Failed to open camera " << cameraIndex << endl;
             return false;
         }
         
         // Set camera properties for non-Pi platforms
-        cap.set(cv::CAP_PROP_FRAME_WIDTH, 320);
-        cap.set(cv::CAP_PROP_FRAME_HEIGHT, 240);
-        cap.set(cv::CAP_PROP_FPS, 30);
+        cap.set(cv::CAP_PROP_FRAME_WIDTH, width);
+        cap.set(cv::CAP_PROP_FRAME_HEIGHT, height);
+        cap.set(cv::CAP_PROP_FPS, framerate);
 
         // Try to capture a test frame
         cv::Mat testFrame;
         if (!cap.read(testFrame)) {
-            std::cerr << "Failed to capture test frame" << std::endl;
+            cerr << "Failed to capture test frame" << endl;
             return false;
         }
     }
 
-    std::cout << "Camera initialized successfully" << std::endl;
+    cout << "Camera initialized successfully" << endl;
     return true;
 }
 
 bool Camera::captureFrame(cv::Mat& frame) {
     if (!cap.isOpened()) {
-        std::cerr << "Camera is not opened" << std::endl;
+        cerr << "Camera is not opened" << endl;
         return false;
     }
     
     bool success = cap.read(frame);
     if (!success) {
-        std::cerr << "Failed to capture frame" << std::endl;
+        cerr << "Failed to capture frame" << endl;
     }
     return success;
 }

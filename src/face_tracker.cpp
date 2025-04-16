@@ -3,60 +3,54 @@
 #include <filesystem>
 
 FaceTracker::FaceTracker(bool show_window) : showWindow(show_window) {
-    std::cout << "Initializing FaceTracker..." << std::endl;
-    
     // Try different possible paths for the face cascade classifier
-    std::vector<std::string> possible_paths = {
+    vector<string> possible_paths = {
         "/usr/share/opencv4/haarcascades/haarcascade_frontalface_default.xml",
         "/usr/local/share/opencv4/haarcascades/haarcascade_frontalface_default.xml",
         "/opt/homebrew/share/opencv4/haarcascades/haarcascade_frontalface_default.xml",
         "/usr/share/opencv/haarcascades/haarcascade_frontalface_default.xml"
     };
-
     bool loaded = false;
     for (const auto& path : possible_paths) {
-        if (std::filesystem::exists(path)) {
+        if (filesystem::exists(path)) {
             if (face_cascade.load(path)) {
                 loaded = true;
-                std::cout << "Successfully loaded face cascade from: " << path << std::endl;
+                cout << "Loaded face cascade from: " << path << endl;
                 break;
             }
         }
     }
-
     if (!loaded) {
-        std::cerr << "Error: Could not find or load face cascade classifier in any of the following paths:" << std::endl;
+        cerr << "Error: Could not find or load face cascade classifier in any of the following paths:" << endl;
         for (const auto& path : possible_paths) {
-            std::cerr << "  " << path << std::endl;
+            cerr << "  " << path << endl;
         }
-        throw std::runtime_error("Failed to load face cascade classifier");
+        throw runtime_error("Failed to load face cascade classifier");
     }
 
     // Create window on main thread if needed
     if (showWindow) {
         try {
-            std::cout << "Creating OpenCV window..." << std::endl;
             cv::namedWindow("Camera", cv::WINDOW_NORMAL);
-            cv::resizeWindow("Camera", 640, 480);
-            std::cout << "OpenCV window created successfully" << std::endl;
-        } catch (const std::exception& e) {
-            std::cerr << "Error creating OpenCV window: " << e.what() << std::endl;
-            showWindow = false;  // Disable window if creation fails
+            cv::resizeWindow("Camera", camera.width, camera.height);
+        } catch (const exception& e) {
+            cerr << "Error creating OpenCV window: " << e.what() << endl;
+            showWindow = false;
         }
     }
 }
 
 FaceTracker::~FaceTracker() {
-    std::cout << "Cleaning up FaceTracker..." << std::endl;
     stopTracking();
+
     // Clean up window on main thread
     if (showWindow) {
         try {
-            std::cout << "Destroying OpenCV window..." << std::endl;
+            cout << "Destroying OpenCV window..." << endl;
             cv::destroyWindow("Camera");
-            std::cout << "OpenCV window destroyed successfully" << std::endl;
-        } catch (const std::exception& e) {
-            std::cerr << "Error destroying OpenCV window: " << e.what() << std::endl;
+            cout << "OpenCV window destroyed successfully" << endl;
+        } catch (const exception& e) {
+            cerr << "Error destroying OpenCV window: " << e.what() << endl;
         }
     }
 }
@@ -65,30 +59,28 @@ void FaceTracker::startTracking() {
     if (isTracking()) {
         return;
     }
-
-    std::cout << "Starting face tracking..." << std::endl;
+    cout << "Starting face tracking..." << endl;
 
     // Initialize camera
     if (!camera.initialize()) {
-        throw std::runtime_error("Failed to initialize camera");
+        throw runtime_error("Failed to initialize camera");
     }
 
+    // Start tracking thread
     shouldQuit = false;
-    trackingThread = std::thread(&FaceTracker::trackingThreadFunc, this);
-    std::cout << "Face tracking thread started" << std::endl;
+    trackingThread = thread(&FaceTracker::trackingThreadFunc, this);
 }
 
 void FaceTracker::stopTracking() {
-    std::cout << "Stopping face tracking..." << std::endl;
     shouldQuit = true;
     if (trackingThread.joinable()) {
         trackingThread.join();
-        std::cout << "Face tracking thread stopped" << std::endl;
+        cout << "Face tracking thread stopped" << endl;
     }
 }
 
 bool FaceTracker::getFacePosition(float& x, float& y) {
-    std::lock_guard<std::mutex> lock(faceMutex);
+    lock_guard<mutex> lock(faceMutex);
     if (!faceTrackingEnabled) {
         return false;
     }
@@ -111,25 +103,25 @@ bool FaceTracker::getFacePosition(float& x, float& y) {
 void FaceTracker::updateWindow() {
     if (!showWindow) return;
 
-    std::lock_guard<std::mutex> lock(frameMutex);
+    // Update window on main thread
+    lock_guard<mutex> lock(frameMutex);
     if (hasNewFrame) {
         try {
             cv::imshow("Camera", currentFrame);
             cv::waitKey(1);  // Process window events
             hasNewFrame = false;
-        } catch (const std::exception& e) {
-            std::cerr << "Error updating window: " << e.what() << std::endl;
+        } catch (const exception& e) {
+            cerr << "Error updating window: " << e.what() << endl;
         }
     }
 }
 
 void FaceTracker::trackingThreadFunc() {
     try {
-        std::cout << "Face tracking thread started" << std::endl;
         while (!shouldQuit) {
             cv::Mat frame;
             if (!camera.captureFrame(frame)) {
-                std::cerr << "Error: Could not read frame from camera" << std::endl;
+                cerr << "Error: Could not read frame from camera" << endl;
                 break;
             }
 
@@ -138,7 +130,7 @@ void FaceTracker::trackingThreadFunc() {
             
             // Update current face position
             {
-                std::lock_guard<std::mutex> lock(faceMutex);
+                lock_guard<mutex> lock(faceMutex);
                 if (!faces.empty()) {
                     currentFace = faces[0];  // Track the first face found
                     faceTrackingEnabled = true;
@@ -156,22 +148,22 @@ void FaceTracker::trackingThreadFunc() {
                 
                 // Update frame buffer
                 {
-                    std::lock_guard<std::mutex> lock(frameMutex);
+                    lock_guard<mutex> lock(frameMutex);
                     frame.copyTo(currentFrame);
                     hasNewFrame = true;
                 }
             }
 
             // Add a small delay to reduce CPU usage
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            this_thread::sleep_for(chrono::milliseconds(100));
         }
-    } catch (const std::exception& e) {
-        std::cerr << "Face tracking error: " << e.what() << std::endl;
+    } catch (const exception& e) {
+        cerr << "Face tracking error: " << e.what() << endl;
     }
 }
 
-std::vector<cv::Rect> FaceTracker::detectFaces(const cv::Mat& frame) {
-    std::vector<cv::Rect> faces;
+vector<cv::Rect> FaceTracker::detectFaces(const cv::Mat& frame) {
+    vector<cv::Rect> faces;
     cv::Mat frame_gray;
     
     // Convert to grayscale
@@ -182,9 +174,9 @@ std::vector<cv::Rect> FaceTracker::detectFaces(const cv::Mat& frame) {
     
     // Detect faces with conservative parameters to reduce false positives
     // scaleFactor: 1.2 (less sensitive than 1.1)
-    // minNeighbors: 6 (requires more evidence than 4)
+    // minNeighbors: 4
     // minSize: 50x50 (focus on larger faces)
-    face_cascade.detectMultiScale(frame_gray, faces, 1.2, 6, 0, cv::Size(50, 50));
+    face_cascade.detectMultiScale(frame_gray, faces, 1.2, 4, 0, cv::Size(30, 30));
     
     return faces;
 } 

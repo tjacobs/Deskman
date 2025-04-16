@@ -8,6 +8,8 @@
 #include <atomic>
 #include "camera.hpp"
 
+using namespace std;
+
 class FaceTracker {
 public:
     // Camera resolution constants
