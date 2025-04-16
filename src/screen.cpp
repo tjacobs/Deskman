@@ -39,7 +39,7 @@ bool create_window(bool fullscreen) {
     screen_height = display_mode.h;
 
     // Create window
-    SDL_Window* window = SDL_CreateWindow("", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, screen_width, screen_height, fullscreen ? SDL_WINDOW_FULLSCREEN : 0);
+    SDL_Window* window = SDL_CreateWindow("Deskman Robot", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, screen_width, screen_height, fullscreen ? SDL_WINDOW_FULLSCREEN : 0);
     if (!window) {
         fprintf(stderr, "Window could not be created: %s\n", SDL_GetError());
         IMG_Quit();
