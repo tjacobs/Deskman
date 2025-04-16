@@ -19,7 +19,8 @@ int main() {
         }
         std::cout << "Camera initialized successfully" << std::endl;
         
-        cv::namedWindow("Face Detection", cv::WINDOW_AUTOSIZE);
+        cv::namedWindow("Face Tracker", cv::WINDOW_NORMAL);
+        cv::resizeWindow("Face Tracker", 640, 480);
         std::cout << "Window created" << std::endl;
         
         while (true) {
@@ -39,7 +40,7 @@ int main() {
             }
             
             // Display the frame
-            cv::imshow("Face Detection", frame);
+            cv::imshow("Face Tracker", frame);
             
             // Break loop if 'q' is pressed
             if (cv::waitKey(1) == 'q') {
