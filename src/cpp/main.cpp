@@ -20,7 +20,7 @@ int main() {
         std::cout << "Camera initialized successfully" << std::endl;
         
         cv::namedWindow("Face Tracker", cv::WINDOW_NORMAL);
-        cv::resizeWindow("Face Tracker", 640, 480);
+        cv::resizeWindow("Face Tracker", 320, 240);
         std::cout << "Window created" << std::endl;
         
         while (true) {
