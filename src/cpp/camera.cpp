@@ -5,13 +5,15 @@
 #include <chrono>
 
 Camera::Camera() : use_libcamera(false), libcamera_handle(nullptr) {
-    // Check if we're on a Raspberry Pi
-    if (std::filesystem::exists("/dev/video0")) {
-        camera_device = "/dev/video0";
-    } else if (std::filesystem::exists("/dev/video10")) {
-        // libcamera might use this device
-        camera_device = "/dev/video10";
-        use_libcamera = true;
+    // Check if we're on a Raspberry Pi by looking for Pi-specific files
+    if (std::filesystem::exists("/proc/device-tree/model")) {
+        std::ifstream model("/proc/device-tree/model");
+        std::string model_str;
+        std::getline(model, model_str);
+        if (model_str.find("Raspberry Pi") != std::string::npos) {
+            use_libcamera = true;
+            std::cout << "Detected Raspberry Pi: " << model_str << std::endl;
+        }
     }
 }
 
