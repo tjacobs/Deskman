@@ -1,11 +1,9 @@
 #include "camera.hpp"
 #include <iostream>
-#include <fstream>
 #include <filesystem>
-#include <thread>
-#include <chrono>
+#include <fstream>
 
-Camera::Camera() : use_libcamera(false), libcamera_handle(nullptr) {
+Camera::Camera() {
     // Check if we're running on a Raspberry Pi
     isRaspberryPi = false;
     if (std::filesystem::exists("/proc/device-tree/model")) {
@@ -13,12 +11,6 @@ Camera::Camera() : use_libcamera(false), libcamera_handle(nullptr) {
         std::string model_str;
         std::getline(model, model_str);
         isRaspberryPi = model_str.find("Raspberry Pi") != std::string::npos;
-    }
-}
-
-Camera::~Camera() {
-    if (cap.isOpened()) {
-        cap.release();
     }
 }
 
@@ -63,30 +55,8 @@ bool Camera::captureFrame(cv::Mat& frame) {
     return cap.read(frame);
 }
 
-bool Camera::initializeLibCamera() {
-    // Use GStreamer pipeline for libcamera with lower framerate
-    std::string pipeline = "libcamerasrc ! video/x-raw,width=320,height=240,framerate=10/1,format=BGR ! appsink";
-    std::cout << "Opening camera with pipeline: " << pipeline << std::endl;
-    
-    cap.open(pipeline, cv::CAP_GSTREAMER);
-    if (!cap.isOpened()) {
-        std::cerr << "Error: Could not open libcamera device" << std::endl;
-        return false;
+Camera::~Camera() {
+    if (cap.isOpened()) {
+        cap.release();
     }
-
-    // Test if we can read a frame
-    cv::Mat test_frame;
-    for (int i = 0; i < 5; i++) {
-        std::cout << "Attempt " << i + 1 << " to read test frame..." << std::endl;
-        if (cap.read(test_frame)) {
-            std::cout << "Successfully captured test frame: " << test_frame.cols << "x" << test_frame.rows << std::endl;
-            return true;
-        } else {
-            std::cout << "Failed to capture test frame, retrying..." << std::endl;
-            std::this_thread::sleep_for(std::chrono::seconds(1));
-        }
-    }
-    
-    std::cerr << "Error: Could not read frames from libcamera device" << std::endl;
-    return false;
 } 
