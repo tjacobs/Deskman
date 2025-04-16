@@ -1,6 +1,7 @@
 # Deskman robot
 cmake_minimum_required(VERSION 3.10)
-project(robot)
+project(robot LANGUAGES CXX)
+set(TARGET_NAME robot)
 
 # Set C++ standard
 set(CMAKE_CXX_STANDARD 20)
