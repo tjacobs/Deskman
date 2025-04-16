@@ -24,6 +24,21 @@ int main() {
         std::cout << "Window created" << std::endl;
         
         while (true) {
+            // Skip every other frame
+            static bool skip_frame = false;
+            skip_frame = !skip_frame;
+            
+            if (skip_frame) {
+                // Just read and discard the frame
+                cv::Mat temp;
+                if (!camera.captureFrame(temp)) {
+                    std::cerr << "Error: Failed to capture frame" << std::endl;
+                    break;
+                }
+                continue;
+            }
+            
+            // Capture a frame
             cv::Mat frame;
             if (!camera.captureFrame(frame)) {
                 std::cerr << "Failed to capture frame" << std::endl;
