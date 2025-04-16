@@ -7,6 +7,9 @@ set(TARGET_NAME robot)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Find OpenCV package
+find_package(OpenCV REQUIRED)
+
 # Create the executable from source files
 add_executable(${TARGET_NAME}
     main.cpp
@@ -15,6 +18,8 @@ add_executable(${TARGET_NAME}
     screen.cpp
     servos.cpp
     vector_renderer.cpp
+    face_tracker.cpp
+    camera.cpp
     ../servos/SMS_STS.cpp
     ../servos/SCS.cpp
     ../servos/SCSerial.cpp
@@ -30,6 +35,12 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     include_directories(/usr/include/SDL2)
     target_link_libraries(${TARGET_NAME} PRIVATE asound)
     target_link_libraries(${TARGET_NAME} PRIVATE SDL2 SDL2_image SDL2_ttf)
+    
+    # GStreamer for libcamera
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(GSTREAMER REQUIRED gstreamer-1.0)
+    include_directories(${GSTREAMER_INCLUDE_DIRS})
+    target_link_libraries(${TARGET_NAME} PRIVATE ${GSTREAMER_LIBRARIES})
 elseif(APPLE)
     # macOS specific includes and libraries
     include_directories(/opt/homebrew/include)
@@ -53,4 +64,5 @@ target_link_libraries(${TARGET_NAME}
         pv_porcupine
         -L${CMAKE_CURRENT_SOURCE_DIR}/lib -lwebsockets
         -Wl,-rpath,${CMAKE_CURRENT_SOURCE_DIR}/lib
+        ${OpenCV_LIBS}
         )

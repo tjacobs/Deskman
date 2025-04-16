@@ -7,14 +7,19 @@
 #include "screen.h"
 #include "servos.h"
 #include "vector_renderer.h"
+#include "face_tracker.hpp"
 #include <iostream>
 #include <thread>
 #include <chrono>
+#include <opencv2/opencv.hpp>
 
 using namespace std;
 
 // Global vector renderer
 VectorRenderer vectorRenderer;
+
+// Global face tracking
+FaceTracker faceTracker(true);  // Enable camera window
 
 int main(int argc, char **argv) {
     // Connect to servos
@@ -29,6 +34,9 @@ int main(int argc, char **argv) {
 
     // Create face
     face = create_face(screen_width, screen_height);
+
+    // Start face tracking
+    faceTracker.startTracking();
 
     // Animation variables
     float time = 0.0f;
@@ -100,6 +108,22 @@ int main(int argc, char **argv) {
             }
         }
 
+        // Update face tracking
+        float faceX, faceY;
+        if (faceTracker.getFacePosition(faceX, faceY)) {
+            // Update look target
+            targetX = faceX;
+            targetY = faceY;
+            
+            // Move head to follow face
+            move_head(targetX * HEAD_SCALE, targetY * HEAD_SCALE);
+            currentHeadX = targetX;
+            currentHeadY = targetY;
+        }
+
+        // Update camera window from main thread
+        faceTracker.updateWindow();
+
         // Update animation
         time += animationSpeed;
         float tiltX = 0; //sin(time) * maxTilt;
@@ -107,7 +131,7 @@ int main(int argc, char **argv) {
 
         // Update looking behavior
         lookTimer += 0.016f;  // Assuming ~60fps
-        if (!isLooking && lookTimer >= lookInterval) {
+        if (!isLooking && lookTimer >= lookInterval && !faceTracker.getFacePosition(faceX, faceY)) {
             isLooking = true;
             lookTimer = 0.0f;
             lookStartTime = time;
@@ -145,7 +169,7 @@ int main(int argc, char **argv) {
         }
 
         // Look
-        if (isLooking) {
+        if (isLooking && !faceTracker.getFacePosition(faceX, faceY)) {
             float lookTime = time - lookStartTime;
             
             switch (lookState) {
@@ -265,6 +289,9 @@ int main(int argc, char **argv) {
     if (movement_thread.joinable()) {
         movement_thread.join();
     }
+
+    // Stop face tracking
+    faceTracker.stopTracking();
 
     // Done
     close_window();
