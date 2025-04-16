@@ -6,9 +6,10 @@ int main() {
     std::cout << "OpenCV version: " << CV_VERSION << std::endl;
     std::cout << "Build info: " << std::endl << cv::getBuildInformation() << std::endl;
     
-    // Try to open the camera using the libcamera backend
+    // Use GStreamer pipeline with libcamera
     cv::VideoCapture cap;
-    bool success = cap.open(0, cv::CAP_ANY);  // Try default camera with any backend
+    std::string pipeline = "libcamerasrc ! video/x-raw,width=1280,height=720,framerate=30/1 ! videoconvert ! appsink";
+    bool success = cap.open(pipeline, cv::CAP_GSTREAMER);
     
     if (success) {
         std::cout << "Successfully opened camera" << std::endl;
