@@ -3,6 +3,9 @@ project(face_tracker)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Set custom OpenCV path for Pi
+set(OpenCV_DIR "/home/tom/Documents/opencv/build")
+
 # Find required packages
 find_package(OpenCV REQUIRED)
 
@@ -13,9 +16,7 @@ add_executable(face_tracker
     face_tracker.cpp
 )
 
-add_executable(test_libcamera
-    test_libcamera.cpp
-)
+add_executable(test_libcamera test_libcamera.cpp)
 
 # Link libraries
 target_link_libraries(face_tracker PRIVATE
