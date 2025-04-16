@@ -1,14 +1,15 @@
 #include <opencv2/opencv.hpp>
 #include <iostream>
 #include <thread>
+#include <chrono>
 
 int main() {
     // Print OpenCV version and build info
     std::cout << "OpenCV version: " << CV_VERSION << std::endl;
     std::cout << "Build info: " << cv::getBuildInformation() << std::endl;
 
-    // Use a simpler GStreamer pipeline with the camera's native format
-    std::string pipeline = "libcamerasrc ! video/x-bayer,format=sgbgr10 ! videoconvert ! video/x-raw,format=BGR ! appsink";
+    // Use a simpler GStreamer pipeline
+    std::string pipeline = "libcamerasrc ! video/x-raw,format=BGR ! appsink";
     std::cout << "Opening camera with pipeline: " << pipeline << std::endl;
 
     cv::VideoCapture cap(pipeline, cv::CAP_GSTREAMER);
@@ -16,6 +17,8 @@ int main() {
         std::cerr << "Failed to open camera" << std::endl;
         return -1;
     }
+
+    std::cout << "Camera opened successfully" << std::endl;
 
     // Try to read a frame
     cv::Mat frame;
