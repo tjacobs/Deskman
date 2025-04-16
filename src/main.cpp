@@ -35,8 +35,13 @@ int main(int argc, char **argv) {
     // Create face
     face = create_face(screen_width, screen_height);
 
-    // Start face tracking
-    faceTracker.startTracking();
+    // Start face tracking if camera is available
+    if (faceTracker.isCameraAvailable()) {
+        faceTracker.startTracking();
+        cout << "Face tracking started successfully" << endl;
+    } else {
+        cout << "Face tracking disabled - camera not available" << endl;
+    }
 
     // Animation variables
     float time = 0.0f;
@@ -108,9 +113,9 @@ int main(int argc, char **argv) {
             }
         }
 
-        // Update face tracking
+        // Update face tracking if camera is available
         float faceX, faceY;
-        if (faceTracker.getFacePosition(faceX, faceY)) {
+        if (faceTracker.isCameraAvailable() && faceTracker.getFacePosition(faceX, faceY)) {
             // Update look target
             targetX = faceX;
             targetY = faceY;

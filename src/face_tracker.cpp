@@ -28,8 +28,12 @@ FaceTracker::FaceTracker(bool show_window) : showWindow(show_window) {
         throw runtime_error("Failed to load face cascade classifier");
     }
 
-    // Create window on main thread if needed
-    if (showWindow) {
+    // Try to initialize camera
+    cameraAvailable = camera.initialize();
+    if (!cameraAvailable) {
+        cerr << "Warning: Could not initialize camera. Face tracking will be disabled." << endl;
+        showWindow = false;  // Disable window if camera is not available
+    } else if (showWindow) {
         try {
             cv::namedWindow("Camera", cv::WINDOW_NORMAL);
             cv::resizeWindow("Camera", camera.width, camera.height);
@@ -59,11 +63,13 @@ void FaceTracker::startTracking() {
     if (isTracking()) {
         return;
     }
+
     cout << "Starting face tracking..." << endl;
 
-    // Initialize camera
-    if (!camera.initialize()) {
-        throw runtime_error("Failed to initialize camera");
+    // Only start tracking if camera is available
+    if (!cameraAvailable) {
+        cout << "Face tracking disabled - camera not available" << endl;
+        return;
     }
 
     // Start tracking thread
@@ -80,6 +86,10 @@ void FaceTracker::stopTracking() {
 }
 
 bool FaceTracker::getFacePosition(float& x, float& y) {
+    if (!cameraAvailable) {
+        return false;
+    }
+
     lock_guard<mutex> lock(faceMutex);
     if (!faceTrackingEnabled) {
         return false;
@@ -101,9 +111,8 @@ bool FaceTracker::getFacePosition(float& x, float& y) {
 }
 
 void FaceTracker::updateWindow() {
-    if (!showWindow) return;
+    if (!showWindow || !cameraAvailable) return;
 
-    // Update window on main thread
     lock_guard<mutex> lock(frameMutex);
     if (hasNewFrame) {
         try {

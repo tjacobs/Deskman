@@ -24,6 +24,7 @@ public:
     void startTracking();
     void stopTracking();
     bool isTracking() const { return trackingThread.joinable(); }
+    bool isCameraAvailable() const { return cameraAvailable; }
     
     // Get the current face position in normalized coordinates (-1 to 1)
     bool getFacePosition(float& x, float& y);
@@ -43,6 +44,7 @@ private:
     std::atomic<bool> shouldQuit{false};
     bool faceTrackingEnabled{false};
     bool showWindow;
+    bool cameraAvailable{false};
 
     // Frame buffer for window updates
     std::mutex frameMutex;
