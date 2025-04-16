@@ -1,6 +1,14 @@
 #include "face_tracker.hpp"
 #include <iostream>
+
+// Platform-specific filesystem namespace
+#ifdef __linux__
 #include <filesystem>
+namespace fs = std::__fs::filesystem;
+#else
+#include <filesystem>
+namespace fs = std::filesystem;
+#endif
 
 FaceTracker::FaceTracker(bool show_window) : showWindow(show_window) {
     std::cout << "Initializing FaceTracker..." << std::endl;
@@ -15,7 +23,7 @@ FaceTracker::FaceTracker(bool show_window) : showWindow(show_window) {
 
     bool loaded = false;
     for (const auto& path : possible_paths) {
-        if (std::__fs::filesystem::exists(path)) {
+        if (fs::exists(path)) {
             if (face_cascade.load(path)) {
                 loaded = true;
                 std::cout << "Successfully loaded face cascade from: " << path << std::endl;
