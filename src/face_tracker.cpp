@@ -6,9 +6,7 @@ FaceTracker::FaceTracker(bool show_window) : showWindow(show_window) {
     // Try different possible paths for the face cascade classifier
     vector<string> possible_paths = {
         "/usr/share/opencv4/haarcascades/haarcascade_frontalface_default.xml",
-        "/usr/local/share/opencv4/haarcascades/haarcascade_frontalface_default.xml",
-        "/opt/homebrew/share/opencv4/haarcascades/haarcascade_frontalface_default.xml",
-        "/usr/share/opencv/haarcascades/haarcascade_frontalface_default.xml"
+        "/opt/homebrew/share/opencv4/haarcascades/haarcascade_frontalface_default.xml"
     };
     bool loaded = false;
     for (const auto& path : possible_paths) {
@@ -63,7 +61,6 @@ void FaceTracker::startTracking() {
     if (isTracking()) {
         return;
     }
-
     cout << "Starting face tracking..." << endl;
 
     // Only start tracking if camera is available
