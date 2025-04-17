@@ -13,9 +13,9 @@ public:
     bool captureFrame(cv::Mat& frame);
 
     // Camera parameters
-    const int width = 320;
-    const int height = 240;
-    const int framerate = 10;
+    const int width = 640;
+    const int height = 480;
+    const int framerate = 30;
 
 private:
     cv::VideoCapture cap;
