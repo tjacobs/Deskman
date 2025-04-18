@@ -260,7 +260,7 @@ int main(int argc, char **argv) {
         face.rightEye->radiusY = eyeHeight;
 
         // Clear the screen
-        SDL_SetRenderDrawColor(renderer, 81, 74, 63, 255);
+        SDL_SetRenderDrawColor(renderer, 255,255,255,255);
         SDL_RenderClear(renderer);
 
         // Render the face

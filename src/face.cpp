@@ -14,10 +14,10 @@ Face create_face(int center_x, int center_y) {
     Face face;
 
     // Create vector shapes for the face
-    face.leftEye = new Ellipse(45, 120, {255, 255, 255, 255}, {255, 255, 255, 255}, 0.0f);
+    face.leftEye = new Ellipse(45, 120, {25, 25, 25, 255}, {255, 255, 255, 255}, 0.0f);
     face.leftEye->localPosition = Vec3(-120, -100, 0);
     
-    face.rightEye = new Ellipse(45, 120, {255, 255, 255, 255}, {255, 255, 255, 255}, 0.0f);
+    face.rightEye = new Ellipse(45, 120, {25, 25, 25, 255}, {255, 255, 255, 255}, 0.0f);
     face.rightEye->localPosition = Vec3(120, -100, 0);
     
     // Create mouth with cutout
