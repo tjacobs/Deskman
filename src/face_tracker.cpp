@@ -93,12 +93,14 @@ bool FaceTracker::getFacePosition(float& x, float& y) {
     }
 
     // Calculate face position relative to screen center
-    x = (currentFace.x + currentFace.width/2) - CAMERA_CENTER_X;
-    y = (currentFace.y + currentFace.height/2) - CAMERA_CENTER_Y;
+    float centerX = camera.width / 2.0f;
+    float centerY = camera.height / 2.0f;
+    x = (currentFace.x + currentFace.width/2) - centerX;
+    y = (currentFace.y + currentFace.height/2) - centerY;
     
     // Normalize to [-1, 1] range
-    x /= CAMERA_CENTER_X;
-    y /= CAMERA_CENTER_Y;
+    x /= centerX;
+    y /= centerY;
     
     // Invert coordinates to match screen coordinates
     x = -x;
