@@ -12,12 +12,6 @@ using namespace std;
 
 class FaceTracker {
 public:
-    // Camera resolution constants
-    static constexpr int CAMERA_WIDTH = 320;
-    static constexpr int CAMERA_HEIGHT = 240;
-    static constexpr float CAMERA_CENTER_X = CAMERA_WIDTH / 2.0f;
-    static constexpr float CAMERA_CENTER_Y = CAMERA_HEIGHT / 2.0f;
-
     FaceTracker(bool show_window = false);
     ~FaceTracker();
     

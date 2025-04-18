@@ -38,9 +38,6 @@ int main(int argc, char **argv) {
     // Start face tracking if camera is available
     if (faceTracker.isCameraAvailable()) {
         faceTracker.startTracking();
-        cout << "Face tracking started successfully" << endl;
-    } else {
-        cout << "Face tracking disabled - camera not available" << endl;
     }
 
     // Animation variables
